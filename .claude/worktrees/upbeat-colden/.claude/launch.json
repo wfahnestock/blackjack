@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "blackjack-react",
+      "runtimeExecutable": "C:/Users/wfahnestock/AppData/Roaming/nvm/v22.14.0/node.exe",
+      "runtimeArgs": ["start-dev.js"],
+      "port": 5173
+    }
+  ]
+}
