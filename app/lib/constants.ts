@@ -61,7 +61,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   bettingTimerSeconds: 30,
   turnTimerSeconds: 45,
   allowCountingHint: false,
-  minBet: 10,
+  minBet: 5,
   maxBet: 500,
 };
 
