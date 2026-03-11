@@ -463,9 +463,17 @@ export class GameStateMachine {
 
     this.broadcast("state:dealer-updated", this.state.dealerHand);
 
-    // Check if any player has a non-bust, non-blackjack hand
+    // If dealer has blackjack, skip drawing entirely and go straight to payout.
+    // Player blackjacks push; all other non-bust hands lose.
+    if (isBlackjack(this.state.dealerHand)) {
+      setTimeout(() => this.startPayout(), 400);
+      return;
+    }
+
+    // Check if any player has a hand that needs dealer action
+    // (not busted, and not a blackjack — BJs auto-win against a non-BJ dealer)
     const anyActive = this.state.players.some((p) =>
-      p.hands.some((h) => !h.busted)
+      p.hands.some((h) => !h.busted && !isBlackjack(h))
     );
 
     if (!anyActive) {
@@ -518,12 +526,15 @@ export class GameStateMachine {
           result = "bust";
           payout -= 0; // already lost bet
         } else if (dealerBJ && isBlackjack(hand)) {
+          // Natural blackjack vs natural blackjack → push
           result = "push";
           payout += hand.bet; // refund
         } else if (dealerBJ) {
+          // Dealer blackjack beats everything else (including player 21 with 3+ cards)
           result = "lose";
           // bet already gone
         } else if (isBlackjack(hand)) {
+          // Player natural blackjack beats dealer 21 made with 3+ cards → 3:2 payout
           result = "blackjack";
           // Round BJ bonus to the nearest 5-chip denomination to avoid non-integer chip totals.
           // e.g. bet=5 → floor(7.5)=7 (wrong) → round(7.5/5)*5=10 (correct multiple of 5).
