@@ -73,7 +73,7 @@ export default function Home() {
         <div className="text-center">
           <div className="text-6xl mb-3 select-none">♠</div>
           <h1 className="text-4xl font-black text-white tracking-tight">Blackjack</h1>
-          <p className="text-gray-500 mt-2">Multiplayer · 6-deck shoe · Card counting friendly</p>
+          <p className="text-gray-500 mt-2">Multiplayer · 6-deck shoe</p>
         </div>
 
         {/* Player setup */}
