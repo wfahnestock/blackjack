@@ -183,7 +183,6 @@ This implementation follows standard blackjack rules:
 - **Push**: Tie hands return the original bet
 - **Doubling**: Allowed on any first two cards
 - **Splitting**: Allowed on matching rank cards (limited to two splits - 3 hands total, per player)
-- **Insurance**: Available when dealer shows Ace (pays 2:1)
 
 ## 🤝 Contributing
 
