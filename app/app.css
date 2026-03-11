@@ -63,13 +63,27 @@ body {
 
 /* ─── Action floater (Hit, Stand, Double Down, Split) ───────────────────────── */
 @keyframes action-float-up {
-  0%   { opacity: 0;   transform: translateX(-50%) translateY(0)     scale(0.8); }
-  20%  { opacity: 1;   transform: translateX(-50%) translateY(-8px)  scale(1.05); }
-  40%  { opacity: 1;   transform: translateX(-50%) translateY(-14px) scale(1); }
-  100% { opacity: 0;   transform: translateX(-50%) translateY(-40px) scale(0.9); }
+  0%   { opacity: 0;   transform: translateX(-50%) translateY(6px)   scale(0.85); }
+  20%  { opacity: 1;   transform: translateX(-50%) translateY(-4px)  scale(1.05); }
+  40%  { opacity: 1;   transform: translateX(-50%) translateY(-10px) scale(1); }
+  100% { opacity: 0;   transform: translateX(-50%) translateY(-36px) scale(0.9); }
 }
 
 .action-floater {
   animation: action-float-up 1.1s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  pointer-events: none;
+}
+
+/* ─── Bankruptcy toast ───────────────────────────────────────────────────────── */
+@keyframes toast-in-out {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(12px) scale(0.95); }
+  12%  { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1.03); }
+  20%  { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1); }
+  80%  { opacity: 1; transform: translateX(-50%) translateY(0)    scale(1); }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-8px) scale(0.97); }
+}
+
+.bankruptcy-toast {
+  animation: toast-in-out 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   pointer-events: none;
 }

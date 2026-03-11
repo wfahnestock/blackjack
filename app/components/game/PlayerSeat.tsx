@@ -255,11 +255,11 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf }: Pl
         </div>
       )}
 
-      {/* Action floaters — rise from the centre of the seat */}
+      {/* Action floaters — rise above the seat, clear of the cards */}
       {actionFloaters.map((f) => (
         <span
           key={f.id}
-          className={`action-floater z-10000 absolute top-1/2 left-1/2 text-base font-bold tracking-wide uppercase whitespace-nowrap drop-shadow-md ${ACTION_COLORS[f.action]}`}
+          className={`action-floater z-10000 absolute bottom-full left-1/2 text-base font-bold tracking-wide uppercase whitespace-nowrap drop-shadow-md ${ACTION_COLORS[f.action]}`}
         >
           {ACTION_LABELS[f.action]}
         </span>
