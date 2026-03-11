@@ -16,7 +16,7 @@ export default function Room() {
   const socket = useSocket();
   const state = useGameState();
   const { playerId } = usePlayer();
-  useSoundEffects(state);
+  useSoundEffects(state, playerId);
 
   // Redirect back to lobby if game goes back to lobby phase
   useEffect(() => {
