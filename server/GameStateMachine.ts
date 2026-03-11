@@ -164,11 +164,19 @@ export class GameStateMachine {
     player.hands[0].bet = clamped;
     this.broadcast("state:player-updated", player);
 
-    // Auto-advance to dealing when every seated player has placed a bet
+    // Once every seated player has bet, shorten the remaining timer to 3 seconds
     const seatedPlayers = this.state.players.filter((p) => p.hands.length > 0);
     const allBet = seatedPlayers.length > 0 && seatedPlayers.every((p) => p.hands[0].bet > 0);
     if (allBet) {
-      this.startDealing(); // clears the betting timer internally
+      const shortDelay = 3000;
+      const endsAt = Date.now() + shortDelay;
+      // Only shorten if there's more than 3 seconds left on the clock
+      if (!this.state.phaseEndsAt || this.state.phaseEndsAt > endsAt) {
+        this.clearTimer();
+        this.state.phaseEndsAt = endsAt;
+        this.sync();
+        this.timer = setTimeout(() => this.startDealing(), shortDelay);
+      }
     }
   }
 
@@ -200,7 +208,7 @@ export class GameStateMachine {
     // Deal: p1, p2, ..., dealer(up), p1, p2, ..., dealer(hole)
     const activePlayers = this.state.players.filter((p) => p.hands.length > 0);
     let delay = 0;
-    const DEAL_DELAY = 300;
+    const DEAL_DELAY = 500;
 
     const dealCard = (
       target: "dealer" | "player",
@@ -542,7 +550,7 @@ export class GameStateMachine {
           payout += hand.bet + bjBonus;
         } else {
           const playerValue = getBestValue(hand.cards);
-          if (playerValue > dealerValue || dealerValue > 21) {
+          if (playerValue > dealerValue || dealerValue > 21 || playerValue === 21) {
             result = "win";
             payout += hand.bet * 2;
           } else if (playerValue === dealerValue) {
