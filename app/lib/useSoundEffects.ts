@@ -6,6 +6,7 @@ type SoundKey =
   | "card_draw"
   | "shuffle"
   | "betting_start"
+  | "dealing_start"
   | "blackjack"
   | "player_hit"
   | "player_stand"
@@ -16,6 +17,7 @@ const SOUND_SRCS: Record<SoundKey, string> = {
   card_draw:          "/sounds/card_draw.mp3",
   shuffle:            "/sounds/shuffle.mp3",
   betting_start:      "/sounds/betting_start.mp3",
+  dealing_start:      "/sounds/dealing_start.mp3",
   blackjack:          "/sounds/blackjack.mp3",
   player_hit:         "/sounds/player_hit.mp3",
   player_stand:       "/sounds/player_stand.mp3",
@@ -35,6 +37,7 @@ export function useSoundEffects(state: GameState | null, selfPlayerId: string | 
     card_draw:          null,
     shuffle:            null,
     betting_start:      null,
+    dealing_start:      null,
     blackjack:          null,
     player_hit:         null,
     player_stand:       null,
@@ -66,11 +69,14 @@ export function useSoundEffects(state: GameState | null, selfPlayerId: string | 
     audio.play().catch(() => {});
   }
 
-  // betting_start: fire whenever the phase transitions into "betting".
+  // Phase-transition sounds: fire once whenever the phase changes to a target.
   useEffect(() => {
     if (!state) return;
     if (state.phase === "betting" && prevPhase.current !== "betting") {
       play("betting_start");
+    }
+    if (state.phase === "dealing" && prevPhase.current !== "dealing") {
+      play("dealing_start");
     }
     prevPhase.current = state.phase;
   }, [state?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
