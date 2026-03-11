@@ -4,6 +4,7 @@ import { CHIP_DENOMINATIONS, CHIP_COLORS } from "~/lib/constants";
 import type { ChipDenomination } from "~/lib/constants";
 import type { GameSettings } from "~/lib/types";
 import { formatChips } from "~/lib/handUtils";
+import { playButtonClick } from "~/lib/buttonSound";
 
 interface BettingControlsProps {
   playerChips: number;
@@ -23,17 +24,20 @@ export function BettingControls({
   const addChip = (denom: ChipDenomination) => {
     const next = Math.min(settings.maxBet, pendingBet + denom);
     if (next <= playerChips) {
+      playButtonClick();
       setPendingBet(next);
       onBet(next);
     }
   };
 
   const clear = () => {
+    playButtonClick();
     setPendingBet(0);
     onBet(0);
   };
 
   const allIn = () => {
+    playButtonClick();
     const amount = Math.min(settings.maxBet, playerChips);
     setPendingBet(amount);
     onBet(amount);
