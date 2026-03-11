@@ -15,7 +15,7 @@ const tsxCli = join(__dirname, "node_modules/tsx/dist/cli.mjs");
 const socketServer = spawn(
   process.execPath,
   [tsxCli, "watch", "server/index.ts"],
-  { cwd: __dirname, stdio: "inherit", env: { ...process.env, HOST: "0.0.0.0" } }
+  { cwd: __dirname, stdio: "inherit", env: { ...process.env, HOST: "0.0.0.0", PORT: "3001" } }
 );
 
 for (const child of [appServer, socketServer]) {
