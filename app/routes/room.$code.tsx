@@ -4,6 +4,7 @@ import { GameTable } from "~/components/game/GameTable";
 import { useSocket } from "~/lib/useSocket";
 import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
+import { useSoundEffects } from "~/lib/useSoundEffects";
 
 export function meta() {
   return [{ title: "Blackjack — Game" }];
@@ -15,6 +16,7 @@ export default function Room() {
   const socket = useSocket();
   const state = useGameState();
   const { playerId } = usePlayer();
+  useSoundEffects(state);
 
   // Redirect back to lobby if game goes back to lobby phase
   useEffect(() => {
