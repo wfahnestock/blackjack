@@ -56,13 +56,14 @@ export const SHOE_SIZE = 312;              // 6 decks × 52 cards
 export const CUT_CARD_PENETRATION = 0.75; // shuffle when 75% dealt
 
 export const DEFAULT_SETTINGS: GameSettings = {
-  startingChips: 1000,
-  dailyChips: 1000,
+  startingChips: 2500,
+  dailyChips: 2500,
   bettingTimerSeconds: 15,
   turnTimerSeconds: 45,
   allowCountingHint: false,
+  bankruptcyProtection: true,
   minBet: 5,
-  maxBet: 500,
+  maxBet: 10000,
 };
 
 export const MAX_SPLITS = 3;

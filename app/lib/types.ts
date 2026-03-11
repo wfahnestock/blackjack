@@ -56,6 +56,7 @@ export interface GameSettings {
   bettingTimerSeconds: number;
   turnTimerSeconds: number;
   allowCountingHint: boolean;
+  bankruptcyProtection: boolean;
   minBet: number;
   maxBet: number;
 }
@@ -184,6 +185,8 @@ export interface ServerToClientEvents {
   "game:round-result": (results: RoundResult[]) => void;
 
   "game:shuffle": () => void;
+
+  "game:bankruptcy-relief": (payload: { playerId: string }) => void;
 
   "error": (payload: { code: string; message: string }) => void;
   "notification": (payload: { type: "info" | "warning"; message: string }) => void;

@@ -141,7 +141,7 @@ export class GameStateMachine {
       player.status = "betting";
 
       // Bankruptcy protection: restore a minimum stake so the player can keep playing.
-      if (player.chips === 0) {
+      if (player.chips === 0 && this.state.settings.bankruptcyProtection) {
         player.chips = 100;
         this.ledger.setChips(player.playerId, player.chips);
         this.broadcast("game:bankruptcy-relief", { playerId: player.playerId });

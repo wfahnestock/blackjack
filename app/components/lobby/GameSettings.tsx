@@ -21,6 +21,7 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
           <span>Betting timer</span><span className="text-gray-300">{settings.bettingTimerSeconds}s</span>
           <span>Turn timer</span><span className="text-gray-300">{settings.turnTimerSeconds}s</span>
           <span>Count hint</span><span className="text-gray-300">{settings.allowCountingHint ? "On" : "Off"}</span>
+          <span>Bankruptcy protection</span><span className="text-gray-300">{settings.bankruptcyProtection ? "On" : "Off"}</span>
         </div>
       </div>
     );
@@ -87,6 +88,19 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
         <div>
           <p className="text-sm text-gray-300 font-medium">Show Hi-Lo Count Hint</p>
           <p className="text-xs text-gray-600">Displays the running card count to all players</p>
+        </div>
+      </label>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={settings.bankruptcyProtection}
+          onChange={(e) => onChange({ bankruptcyProtection: e.target.checked })}
+          className="w-4 h-4 accent-emerald-500"
+        />
+        <div>
+          <p className="text-sm text-gray-300 font-medium">Bankruptcy Protection</p>
+          <p className="text-xs text-gray-600">Grants 100 chips to players who reach 0 so they can keep playing</p>
         </div>
       </label>
     </div>
