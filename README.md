@@ -1,6 +1,6 @@
 # 🎲 Blackjack React
 
-A real-time multiplayer blackjack game built with React, TypeScript, and Socket.io. Play classic blackjack with friends in private rooms with customizable game settings, chip management, and optional card counting features.
+A real-time multiplayer blackjack game built with React, TypeScript, and Socket.io. Play classic blackjack with up to 6 friends in private rooms with customizable game settings, chip management, and optional card counting features.
 
 ## ✨ Features
 
