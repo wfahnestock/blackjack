@@ -23,8 +23,8 @@ export function PlayingCard({ card, small = false, className = "", style }: Play
 
   const isRed = RED_SUITS.has(card.suit);
   const symbol = SUIT_SYMBOLS[card.suit];
-  const w = small ? "w-10" : "w-14";
-  const h = small ? "h-14" : "h-20";
+  const w = small ? "w-11" : "w-14";
+  const h = small ? "h-16" : "h-20";
   const text = small ? "text-sm" : "text-base";
 
   return (
@@ -51,8 +51,8 @@ export function PlayingCard({ card, small = false, className = "", style }: Play
 }
 
 function CardBack({ small = false, className = "", style }: { small?: boolean; className?: string; style?: React.CSSProperties }) {
-  const w = small ? "w-10" : "w-14";
-  const h = small ? "h-14" : "h-20";
+  const w = small ? "w-11" : "w-14";
+  const h = small ? "h-16" : "h-20";
 
   return (
     <div

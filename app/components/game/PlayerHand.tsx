@@ -36,7 +36,7 @@ export function PlayerHand({ hand, isActive, small = false }: PlayerHandProps) {
         {hand.cards.length === 0 && (
           <div
             className={`
-              ${small ? "w-10 h-14" : "w-14 h-20"} rounded-lg
+              ${small ? "w-11 h-16" : "w-14 h-20"} rounded-lg
               border-2 border-dashed border-gray-700
             `}
           />
