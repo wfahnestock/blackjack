@@ -47,3 +47,16 @@ body {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.5; }
 }
+
+/* ─── Payout floater ────────────────────────────────────────────────────────── */
+@keyframes float-up-fade {
+  0%   { opacity: 0;   transform: translateY(0)     scale(0.85); }
+  12%  { opacity: 1;   transform: translateY(-6px)  scale(1.05); }
+  30%  { opacity: 1;   transform: translateY(-18px) scale(1); }
+  100% { opacity: 0;   transform: translateY(-48px) scale(0.9); }
+}
+
+.payout-floater {
+  animation: float-up-fade 1.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+  pointer-events: none;
+}
