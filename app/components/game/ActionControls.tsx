@@ -2,6 +2,7 @@ import { Button } from "~/components/ui/Button";
 import type { Hand, Player } from "~/lib/types";
 import { getBestValue } from "~/lib/handUtils";
 import { MAX_SPLITS } from "~/lib/constants";
+import { playButtonClick } from "~/lib/buttonSound";
 
 interface ActionControlsProps {
   hand: Hand;
@@ -63,7 +64,7 @@ export function ActionControls({
       <Button
         variant="secondary"
         size="lg"
-        onClick={onSplit}
+        onClick={() => { playButtonClick(); onSplit(); }}
         disabled={!canSplitHand}
       >
         Split
