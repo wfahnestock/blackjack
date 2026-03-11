@@ -192,6 +192,7 @@ export class GameStateMachine {
   startDealing(): void {
     this.clearTimer();
     this.phaseChange("dealing", null, null, null);
+    this.sync(); // Broadcast the "dealing" phase immediately so clients can react (e.g. sound)
 
     // Remove players who didn't bet
     for (const player of this.state.players) {
