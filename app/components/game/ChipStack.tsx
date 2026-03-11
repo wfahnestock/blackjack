@@ -8,14 +8,18 @@ interface ChipStackProps {
 export function ChipStack({ amount, size = "md" }: ChipStackProps) {
   if (amount === 0) return null;
 
-  // Break down amount into chip denominations (greedy)
+  // Break down amount into chip denominations (greedy), capped at 5 chips total
+  // so the stack never grows too tall for awkward bet amounts like 475.
+  const MAX_VISUAL_CHIPS = 5;
   const chips: Array<{ denom: number; count: number }> = [];
   let remaining = amount;
+  let totalSoFar = 0;
   for (const denom of [...CHIP_DENOMINATIONS].reverse()) {
-    if (remaining >= denom) {
-      const count = Math.min(5, Math.floor(remaining / denom));
+    if (remaining >= denom && totalSoFar < MAX_VISUAL_CHIPS) {
+      const count = Math.min(MAX_VISUAL_CHIPS - totalSoFar, Math.floor(remaining / denom));
       chips.push({ denom, count });
       remaining -= denom * count;
+      totalSoFar += count;
     }
   }
 
