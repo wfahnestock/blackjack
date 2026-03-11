@@ -139,6 +139,13 @@ export class GameStateMachine {
     for (const player of this.state.players) {
       player.hands = [makeHand(0)];
       player.status = "betting";
+
+      // Bankruptcy protection: restore a minimum stake so the player can keep playing.
+      if (player.chips === 0) {
+        player.chips = 100;
+        this.ledger.setChips(player.playerId, player.chips);
+        this.broadcast("game:bankruptcy-relief", { playerId: player.playerId });
+      }
     }
     this.state.dealerHand = makeHand();
     this.state.roundNumber++;

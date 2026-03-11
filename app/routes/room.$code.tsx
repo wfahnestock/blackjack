@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { GameTable } from "~/components/game/GameTable";
 import { useSocket } from "~/lib/useSocket";
@@ -17,6 +17,19 @@ export default function Room() {
   const state = useGameState();
   const { playerId } = usePlayer();
   useSoundEffects(state, playerId);
+
+  const [bankruptcyToast, setBankruptcyToast] = useState(false);
+
+  // Show a toast when the server grants this player a bankruptcy relief stake
+  useEffect(() => {
+    const onBankruptcyRelief = ({ playerId: affected }: { playerId: string }) => {
+      if (affected !== playerId) return;
+      setBankruptcyToast(true);
+      setTimeout(() => setBankruptcyToast(false), 3600);
+    };
+    socket.on("game:bankruptcy-relief", onBankruptcyRelief as any);
+    return () => { socket.off("game:bankruptcy-relief", onBankruptcyRelief as any); };
+  }, [socket, playerId]);
 
   // Redirect back to lobby if game goes back to lobby phase
   useEffect(() => {
@@ -42,14 +55,27 @@ export default function Room() {
   }
 
   return (
-    <GameTable
-      state={state}
-      selfPlayerId={playerId}
-      onBet={(amount) => socket.emit("game:place-bet", { amount })}
-      onHit={(handId) => socket.emit("game:hit", { handId })}
-      onStand={(handId) => socket.emit("game:stand", { handId })}
-      onDouble={(handId) => socket.emit("game:double", { handId })}
-      onSplit={(handId) => socket.emit("game:split", { handId })}
-    />
+    <>
+      <GameTable
+        state={state}
+        selfPlayerId={playerId}
+        onBet={(amount) => socket.emit("game:place-bet", { amount })}
+        onHit={(handId) => socket.emit("game:hit", { handId })}
+        onStand={(handId) => socket.emit("game:stand", { handId })}
+        onDouble={(handId) => socket.emit("game:double", { handId })}
+        onSplit={(handId) => socket.emit("game:split", { handId })}
+      />
+
+      {/* Bankruptcy relief toast — only shown to the affected player */}
+      {bankruptcyToast && (
+        <div className="bankruptcy-toast fixed bottom-8 left-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-2xl bg-gray-900 border border-yellow-500/60 shadow-2xl">
+          <span className="text-2xl">🪙</span>
+          <div className="flex flex-col leading-tight">
+            <span className="text-yellow-400 font-bold text-sm">Bankruptcy Relief</span>
+            <span className="text-gray-300 text-xs">+100 chips — back in the game!</span>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
