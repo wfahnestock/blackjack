@@ -58,7 +58,7 @@ export const CUT_CARD_PENETRATION = 0.75; // shuffle when 75% dealt
 export const DEFAULT_SETTINGS: GameSettings = {
   startingChips: 1000,
   dailyChips: 1000,
-  bettingTimerSeconds: 30,
+  bettingTimerSeconds: 15,
   turnTimerSeconds: 45,
   allowCountingHint: false,
   minBet: 5,
