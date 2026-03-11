@@ -42,7 +42,7 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/wfahnestock/blackjack.git
    cd blackjack-react
    ```
 
@@ -85,9 +85,9 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
    - **Stand**: Keep current hand
    - **Double Down**: Double bet and receive exactly one more card
    - **Split**: Split matching cards into two separate hands
-   - **Insurance**: Bet against dealer blackjack (when dealer shows Ace)
 4. **Dealer Plays**: Dealer reveals their hole card and plays according to dealer rules
 5. **Payouts**: Winnings are distributed based on hand outcomes
+6. **Bankruptcy Insurance**: Optional table setting; Players who run out of chips will receive a free 100 chips to keep playing
 
 ### Card Counting (Optional)
 - Enable "Card Counting Hints" in room settings
@@ -98,8 +98,8 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
 
 ### Frontend (`/app`)
 - **React Router 7**: Modern routing and server-side rendering
-- **TypeScript**: Full type safety throughout the application  
-- **Tailwind CSS**: Responsive styling system
+- **TypeScript** 
+- **Tailwind CSS**: Responsive design
 - **Component Architecture**:
   - `components/game/` - Game table, cards, betting controls
   - `components/lobby/` - Room management and player setup
@@ -182,7 +182,7 @@ This implementation follows standard blackjack rules:
 - **Blackjack**: 21 with first two cards pays 3:2
 - **Push**: Tie hands return the original bet
 - **Doubling**: Allowed on any first two cards
-- **Splitting**: Allowed on matching rank cards (limited to one split)
+- **Splitting**: Allowed on matching rank cards (limited to two splits - 3 hands total, per player)
 - **Insurance**: Available when dealer shows Ace (pays 2:1)
 
 ## 🤝 Contributing
