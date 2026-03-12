@@ -192,6 +192,69 @@ app.get("/api/players/:id/profile", requireAuth, async (req: AuthedRequest, res)
   }
 });
 
+app.put("/api/players/:id/settings", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    if (req.playerId !== req.params["id"]) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const { displayName, avatarColor, currentPassword, newPassword } = req.body as {
+      displayName: string;
+      avatarColor: string;
+      currentPassword?: string;
+      newPassword?: string;
+    };
+
+    if (!displayName || displayName.trim().length < 2 || displayName.trim().length > 50) {
+      res.status(400).json({ error: "Display name must be 2–50 characters" });
+      return;
+    }
+
+    let passwordHash: string | undefined;
+    if (currentPassword !== undefined || newPassword !== undefined) {
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ error: "Both current and new password are required to change password" });
+        return;
+      }
+      if (newPassword.length < 8) {
+        res.status(400).json({ error: "New password must be at least 8 characters" });
+        return;
+      }
+      const player = await playerRepo.findById(req.playerId!);
+      if (!player) {
+        res.status(404).json({ error: "Player not found" });
+        return;
+      }
+      const valid = await authService.verifyPassword(currentPassword, player.passwordHash);
+      if (!valid) {
+        res.status(401).json({ error: "Current password is incorrect" });
+        return;
+      }
+      passwordHash = await authService.hashPassword(newPassword);
+    }
+
+    const updated = await playerRepo.updateProfile(
+      req.playerId!,
+      displayName.trim(),
+      avatarColor ?? "#10B981",
+      passwordHash
+    );
+
+    res.json({
+      id: updated.id,
+      username: updated.username,
+      displayName: updated.displayName,
+      avatarColor: updated.avatarColor,
+      chips: updated.chips,
+      lastDailyClaimed: updated.lastDailyClaimed,
+    });
+  } catch (err) {
+    console.error("[settings]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 
 type SocketData = { playerId: string; username: string };

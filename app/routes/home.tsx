@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Navigate } from "react-router";
+import { useNavigate, Navigate, Link } from "react-router";
 import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/Button";
 import { Input } from "~/components/ui/Input";
@@ -214,13 +214,22 @@ export default function Home() {
 
           {error && <p className="text-sm text-red-400 text-center">{error}</p>}
 
-          {/* Sign out */}
-          <button
-            onClick={logout}
-            className="text-xs text-gray-600 hover:text-gray-400 transition-colors self-center"
-          >
-            Sign out
-          </button>
+          {/* Footer actions */}
+          <div className="flex items-center justify-center gap-4 self-center">
+            <Link
+              to="/settings"
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+            >
+              Account Settings
+            </Link>
+            <span className="text-gray-800 text-xs">·</span>
+            <button
+              onClick={logout}
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
       </div>
     </div>

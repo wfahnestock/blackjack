@@ -27,6 +27,8 @@ interface AuthContextValue {
   logout: () => void;
   /** Update local chip/reward state after a daily claim or round end. */
   updateUserChips: (chips: number, lastDailyClaimed?: string | null) => void;
+  /** Update local profile state after settings are saved. */
+  updateUserProfile: (displayName: string, avatarColor: string) => void;
 }
 
 const AUTH_TOKEN_KEY = "bj_auth_token";
@@ -133,8 +135,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
   }
 
+  function updateUserProfile(displayName: string, avatarColor: string): void {
+    if (!user) return;
+    const updated: AuthUser = { ...user, displayName, avatarColor };
+    setUser(updated);
+    localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

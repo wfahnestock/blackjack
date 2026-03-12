@@ -60,6 +60,28 @@ export async function findProfileById(
   return { player: row.players, stats: row.player_stats ?? null };
 }
 
+export async function updateProfile(
+  playerId: string,
+  displayName: string,
+  avatarColor: string,
+  passwordHash?: string
+): Promise<Player> {
+  const values: Partial<typeof players.$inferInsert> = {
+    displayName,
+    avatarColor,
+    updatedAt: new Date(),
+  };
+  if (passwordHash !== undefined) {
+    values.passwordHash = passwordHash;
+  }
+  const [updated] = await db
+    .update(players)
+    .set(values)
+    .where(eq(players.id, playerId))
+    .returning();
+  return updated;
+}
+
 export async function claimDailyReward(
   playerId: string,
   dailyAmount: number
