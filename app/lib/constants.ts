@@ -53,7 +53,7 @@ export const CHIP_COLORS: Record<ChipDenomination, string> = {
 };
 
 export const SHOE_SIZE = 312;              // 6 decks × 52 cards
-export const CUT_CARD_PENETRATION = 0.75; // shuffle when 75% dealt
+export const CUT_CARD_PENETRATION = 0.90; // shuffle when 90% dealt
 
 export const DEFAULT_SETTINGS: GameSettings = {
   startingChips: 2500,
