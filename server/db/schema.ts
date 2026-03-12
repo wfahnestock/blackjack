@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, date, timestamp, boolean } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, integer, date, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core";
 
 export const players = pgTable("players", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -43,7 +43,37 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
-export type Player = typeof players.$inferSelect;
-export type NewPlayer = typeof players.$inferInsert;
-export type PlayerStats = typeof playerStats.$inferSelect;
+/**
+ * Role definitions. Seeded via `npm run db:seed` and managed through
+ * future moderation tooling. New roles can be added without code deploys
+ * by inserting a row here and re-running the seed (or via admin API).
+ */
+export const roles = pgTable("roles", {
+  id:        uuid("id").primaryKey().defaultRandom(),
+  name:      varchar("name",  { length: 50 }).notNull().unique(),
+  label:     varchar("label", { length: 50 }).notNull(),
+  /** Tailwind color key used by the client badge (e.g. "sky", "amber", "violet"). */
+  color:     varchar("color", { length: 30 }).notNull(),
+  /** Full FontAwesome solid icon class (e.g. "fa-gavel", "fa-wrench"). */
+  icon:      varchar("icon",  { length: 50 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Join table assigning roles to players.
+ * A player with no rows here is an ordinary (unprivileged) player.
+ */
+export const playerRoles = pgTable("player_roles", {
+  playerId:   uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  roleId:     uuid("role_id").notNull().references(() => roles.id,   { onDelete: "cascade" }),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.playerId, t.roleId] }),
+}));
+
+export type Player         = typeof players.$inferSelect;
+export type NewPlayer      = typeof players.$inferInsert;
+export type PlayerStats    = typeof playerStats.$inferSelect;
 export type ChatMessageRow = typeof chatMessages.$inferSelect;
+export type Role           = typeof roles.$inferSelect;
+export type PlayerRoleRow  = typeof playerRoles.$inferSelect;
