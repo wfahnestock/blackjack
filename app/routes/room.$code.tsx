@@ -108,7 +108,7 @@ export default function Room() {
           className="
             fixed z-40
             bottom-0 left-0 right-0 h-[60vh]
-            sm:bottom-0 sm:top-0 sm:left-auto sm:right-0 sm:w-80 sm:h-auto
+            sm:top-82 sm:bottom-4 sm:left-auto sm:right-4 sm:w-80 sm:h-auto
           "
         >
           <ChatPanel
@@ -117,7 +117,7 @@ export default function Room() {
             rateLimitError={chat.rateLimitError}
             onSend={chat.sendMessage}
             onClose={handleChatClose}
-            className="h-full rounded-b-none sm:rounded-2xl sm:rounded-r-none sm:rounded-tr-none border-r-0 sm:border-r-0"
+            className="h-full rounded-t-2xl rounded-b-none sm:rounded-2xl"
           />
         </div>
       )}
