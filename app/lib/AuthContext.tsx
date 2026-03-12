@@ -4,6 +4,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { RoleInfo } from "~/lib/types";
 
 export interface AuthUser {
   playerId: string;
@@ -12,6 +13,7 @@ export interface AuthUser {
   avatarColor: string;
   chips: number;
   lastDailyClaimed: string | null;
+  roles: RoleInfo[];
 }
 
 interface AuthContextValue {
@@ -43,6 +45,7 @@ interface ServerPlayerResponse {
   avatarColor: string;
   chips: number;
   lastDailyClaimed: string | null;
+  roles: RoleInfo[];
 }
 
 interface AuthApiResponse {
@@ -72,13 +75,18 @@ function serverPlayerToAuthUser(player: ServerPlayerResponse): AuthUser {
     avatarColor: player.avatarColor,
     chips: player.chips,
     lastDailyClaimed: player.lastDailyClaimed,
+    roles: player.roles ?? [],
   };
 }
 
 function loadStoredUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(AUTH_PLAYER_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as AuthUser & { role?: unknown };
+    // Migrate old localStorage entries that stored a single `role` string
+    if (!parsed.roles) parsed.roles = [];
+    return parsed;
   } catch {
     return null;
   }

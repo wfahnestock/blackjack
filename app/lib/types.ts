@@ -1,3 +1,21 @@
+// ─── Roles ────────────────────────────────────────────────────────────────────
+
+/**
+ * A role definition as returned by the server.
+ * Roles are stored in the `roles` table and managed via admin tooling.
+ * A player with an empty `roles` array is an ordinary (unprivileged) player.
+ */
+export interface RoleInfo {
+  id: string;
+  name: string;
+  /** Human-readable display label, e.g. "Moderator" */
+  label: string;
+  /** Tailwind color key used by the client badge, e.g. "sky", "amber", "violet" */
+  color: string;
+  /** FontAwesome solid icon class, e.g. "fa-gavel", "fa-wrench" */
+  icon: string;
+}
+
 // ─── Primitives ───────────────────────────────────────────────────────────────
 
 export type Suit = "spades" | "hearts" | "diamonds" | "clubs";
@@ -108,6 +126,8 @@ export interface ChatMessage {
   /** Always false for now; reserved for a future profanity/censor pass. */
   censored: boolean;
   timestamp: number; // epoch ms
+  /** Roles held by the sender at the time the message was sent. */
+  roles: RoleInfo[];
 }
 
 // ─── Round Results ─────────────────────────────────────────────────────────────
