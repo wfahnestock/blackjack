@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db } from "./client.js";
 import { roles, playerRoles } from "./schema.js";
 import type { Role } from "./schema.js";
@@ -56,6 +56,31 @@ export async function getPlayerRoles(playerId: string): Promise<Role[]> {
     .innerJoin(roles, eq(playerRoles.roleId, roles.id))
     .where(eq(playerRoles.playerId, playerId));
   return rows.map((r) => r.role);
+}
+
+/**
+ * Batch-fetches roles for multiple players in a single query.
+ * Returns a Map of playerId → Role[]. Players with no roles are omitted.
+ * Used to enrich chat history messages without N+1 queries.
+ */
+export async function getPlayerRolesBatch(
+  playerIds: string[]
+): Promise<Map<string, Role[]>> {
+  if (playerIds.length === 0) return new Map();
+
+  const rows = await db
+    .select({ playerId: playerRoles.playerId, role: roles })
+    .from(playerRoles)
+    .innerJoin(roles, eq(playerRoles.roleId, roles.id))
+    .where(inArray(playerRoles.playerId, playerIds));
+
+  const map = new Map<string, Role[]>();
+  for (const { playerId, role } of rows) {
+    const list = map.get(playerId) ?? [];
+    list.push(role);
+    map.set(playerId, list);
+  }
+  return map;
 }
 
 /** Assigns a role to a player. No-ops if already assigned. */
