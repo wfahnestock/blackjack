@@ -1,6 +1,22 @@
 import { useState, useEffect, useRef } from "react";
-import type { ChatMessage } from "~/lib/types";
+import type { ChatMessage, RoleInfo } from "~/lib/types";
 import { MAX_CHAT_MESSAGE_LENGTH } from "~/lib/constants";
+
+/**
+ * Maps the `color` key stored in the DB to a Tailwind text-color class.
+ * All strings are written out in full so Tailwind's scanner includes them.
+ */
+const ROLE_TEXT_COLORS: Record<string, string> = {
+  sky:     "text-sky-400",
+  amber:   "text-amber-400",
+  violet:  "text-violet-400",
+  emerald: "text-emerald-400",
+  rose:    "text-rose-400",
+  blue:    "text-blue-400",
+  purple:  "text-purple-400",
+  red:     "text-red-400",
+  default: "text-gray-400",
+};
 
 interface ChatPanelProps {
   messages: ChatMessage[];
@@ -10,6 +26,16 @@ interface ChatPanelProps {
   /** If provided, a close (×) button is shown — used for mobile overlays. */
   onClose?: () => void;
   className?: string;
+}
+
+function ChatRoleIcon({ role }: { role: RoleInfo }) {
+  const colorClass = ROLE_TEXT_COLORS[role.color] ?? ROLE_TEXT_COLORS.default;
+  return (
+    <i
+      className={`fa-solid ${role.icon} text-[10px] shrink-0 ${colorClass}`}
+      title={role.label}
+    />
+  );
 }
 
 function formatTime(timestamp: number): string {
@@ -92,6 +118,10 @@ export function ChatPanel({
                 <span className="text-xs font-medium text-gray-400 truncate max-w-[100px]">
                   {isSelf ? "You" : msg.displayName}
                 </span>
+                {/* Role icons — one per role, icon only with hover tooltip */}
+                {msg.roles?.map((role) => (
+                  <ChatRoleIcon key={role.id} role={role} />
+                ))}
                 <span className="text-xs text-gray-600">{formatTime(msg.timestamp)}</span>
               </div>
 
