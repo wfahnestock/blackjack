@@ -123,11 +123,13 @@ export interface ChatMessage {
   displayName: string;
   avatarColor: string;
   message: string;
-  /** Always false for now; reserved for a future profanity/censor pass. */
+  /** True when a moderator has removed this message. */
   censored: boolean;
   timestamp: number; // epoch ms
   /** Roles held by the sender at the time the message was sent. */
   roles: RoleInfo[];
+  /** If true, rendered as a centered system notice (not a chat bubble). */
+  isSystem?: boolean;
 }
 
 // ─── Round Results ─────────────────────────────────────────────────────────────
@@ -181,6 +183,9 @@ export interface ClientToServerEvents {
   "game:insurance": (payload: { take: boolean }) => void;
 
   "chat:send": (payload: { message: string }) => void;
+
+  "chat:remove_message": (payload: { messageId: string }) => void;
+  "chat:clear": () => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -219,4 +224,7 @@ export interface ServerToClientEvents {
   "chat:message": (message: ChatMessage) => void;
   "chat:history": (messages: ChatMessage[]) => void;
   "chat:error": (payload: { message: string }) => void;
+
+  "chat:message_removed": (payload: { messageId: string }) => void;
+  "chat:cleared": (payload: { clearedBy: string }) => void;
 }

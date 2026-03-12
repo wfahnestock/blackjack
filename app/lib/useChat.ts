@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { nanoid } from "nanoid";
 import type { ChatMessage } from "~/lib/types";
 import type { getSocket } from "~/lib/socket";
 
@@ -12,6 +13,8 @@ export interface UseChatReturn {
   openPanel: () => void;
   closePanel: () => void;
   sendMessage: (text: string) => void;
+  removeMessage: (messageId: string) => void;
+  clearChat: () => void;
 }
 
 export function useChat(socket: AppSocket): UseChatReturn {
@@ -43,14 +46,41 @@ export function useChat(socket: AppSocket): UseChatReturn {
       errorTimerRef.current = setTimeout(() => setRateLimitError(""), 3000);
     }
 
+    function onMessageRemoved(payload: { messageId: string }) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.messageId === payload.messageId ? { ...m, censored: true } : m
+        )
+      );
+    }
+
+    function onCleared(payload: { clearedBy: string }) {
+      const notice: ChatMessage = {
+        messageId: nanoid(),
+        playerId: "system",
+        displayName: "System",
+        avatarColor: "#6B7280",
+        message: `${payload.clearedBy} has cleared the chat!`,
+        censored: false,
+        timestamp: Date.now(),
+        roles: [],
+        isSystem: true,
+      };
+      setMessages([notice]);
+    }
+
     socket.on("chat:history", onHistory);
     socket.on("chat:message", onMessage);
     socket.on("chat:error", onError);
+    socket.on("chat:message_removed", onMessageRemoved);
+    socket.on("chat:cleared", onCleared);
 
     return () => {
       socket.off("chat:history", onHistory);
       socket.off("chat:message", onMessage);
       socket.off("chat:error", onError);
+      socket.off("chat:message_removed", onMessageRemoved);
+      socket.off("chat:cleared", onCleared);
       if (errorTimerRef.current) clearTimeout(errorTimerRef.current);
     };
   }, [socket]);
@@ -73,5 +103,16 @@ export function useChat(socket: AppSocket): UseChatReturn {
     [socket]
   );
 
-  return { messages, unreadCount, rateLimitError, panelOpen, openPanel, closePanel, sendMessage };
+  const removeMessage = useCallback(
+    (messageId: string) => {
+      socket.emit("chat:remove_message", { messageId });
+    },
+    [socket]
+  );
+
+  const clearChat = useCallback(() => {
+    socket.emit("chat:clear");
+  }, [socket]);
+
+  return { messages, unreadCount, rateLimitError, panelOpen, openPanel, closePanel, sendMessage, removeMessage, clearChat };
 }

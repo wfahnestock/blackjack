@@ -10,6 +10,7 @@ import { useSocket } from "~/lib/useSocket";
 import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
 import { useChat } from "~/lib/useChat";
+import { useAuth } from "~/lib/AuthContext";
 import type { GameSettings } from "~/lib/types";
 
 export function meta() {
@@ -22,6 +23,7 @@ export default function Lobby() {
   const socket = useSocket();
   const state = useGameState();
   const { playerId } = usePlayer();
+  const { user } = useAuth();
   const chat = useChat(socket);
 
   const [joined, setJoined] = useState(false);
@@ -89,8 +91,11 @@ export default function Lobby() {
             <ChatPanel
               messages={chat.messages}
               selfPlayerId={playerId}
+              selfRoles={user?.roles}
               rateLimitError={chat.rateLimitError}
               onSend={chat.sendMessage}
+              onRemoveMessage={chat.removeMessage}
+              onClearChat={chat.clearChat}
               onClose={handleMobileChatClose}
               className="flex-1 rounded-b-none"
             />
@@ -150,8 +155,11 @@ export default function Lobby() {
             <ChatPanel
               messages={chat.messages}
               selfPlayerId={playerId}
+              selfRoles={user?.roles}
               rateLimitError={chat.rateLimitError}
               onSend={chat.sendMessage}
+              onRemoveMessage={chat.removeMessage}
+              onClearChat={chat.clearChat}
               className="h-[600px]"
             />
           </div>

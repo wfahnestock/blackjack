@@ -69,6 +69,12 @@ export const DEFAULT_SETTINGS: GameSettings = {
 export const MAX_CHAT_MESSAGE_LENGTH = 200;
 export const MAX_CHAT_HISTORY = 50;
 
+/**
+ * Role names that grant chat moderation privileges (remove messages, clear chat).
+ * Checked against the `name` field of a player's roles.
+ */
+export const MODERATOR_ROLE_NAMES = new Set(["moderator", "staff"]);
+
 export const MAX_SPLITS = 3;
 export const MAX_PLAYERS = 6;
 export const ROOM_CODE_LENGTH = 6;

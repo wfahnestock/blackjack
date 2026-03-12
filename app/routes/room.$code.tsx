@@ -8,6 +8,7 @@ import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
 import { useSoundEffects } from "~/lib/useSoundEffects";
 import { useChat } from "~/lib/useChat";
+import { useAuth } from "~/lib/AuthContext";
 
 export function meta() {
   return [{ title: "Blackjack — Game" }];
@@ -19,6 +20,7 @@ export default function Room() {
   const socket = useSocket();
   const state = useGameState();
   const { playerId } = usePlayer();
+  const { user } = useAuth();
   useSoundEffects(state, playerId);
   const chat = useChat(socket);
 
@@ -114,8 +116,11 @@ export default function Room() {
           <ChatPanel
             messages={chat.messages}
             selfPlayerId={playerId}
+            selfRoles={user?.roles}
             rateLimitError={chat.rateLimitError}
             onSend={chat.sendMessage}
+            onRemoveMessage={chat.removeMessage}
+            onClearChat={chat.clearChat}
             onClose={handleChatClose}
             className="h-full rounded-t-2xl rounded-b-none sm:rounded-2xl"
           />
