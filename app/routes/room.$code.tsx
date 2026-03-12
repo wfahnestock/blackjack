@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { GameTable } from "~/components/game/GameTable";
+import { ProfileModal } from "~/components/ui/ProfileModal";
 import { useSocket } from "~/lib/useSocket";
 import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
@@ -19,6 +20,7 @@ export default function Room() {
   useSoundEffects(state, playerId);
 
   const [bankruptcyToast, setBankruptcyToast] = useState(false);
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
 
   // Show a toast when the server grants this player a bankruptcy relief stake
   useEffect(() => {
@@ -56,6 +58,10 @@ export default function Room() {
 
   return (
     <>
+      <ProfileModal
+        playerId={profilePlayerId}
+        onClose={() => setProfilePlayerId(null)}
+      />
       <GameTable
         state={state}
         selfPlayerId={playerId}
@@ -64,6 +70,7 @@ export default function Room() {
         onStand={(handId) => socket.emit("game:stand", { handId })}
         onDouble={(handId) => socket.emit("game:double", { handId })}
         onSplit={(handId) => socket.emit("game:split", { handId })}
+        onPlayerClick={setProfilePlayerId}
       />
 
       {/* Bankruptcy relief toast — only shown to the affected player */}

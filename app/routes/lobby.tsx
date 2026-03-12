@@ -4,6 +4,7 @@ import { Button } from "~/components/ui/Button";
 import { RoomCodeDisplay } from "~/components/lobby/RoomCodeDisplay";
 import { PlayerList } from "~/components/lobby/PlayerList";
 import { GameSettingsPanel } from "~/components/lobby/GameSettings";
+import { ProfileModal } from "~/components/ui/ProfileModal";
 import { useSocket } from "~/lib/useSocket";
 import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
@@ -21,6 +22,7 @@ export default function Lobby() {
   const { playerId } = usePlayer();
 
   const [joined, setJoined] = useState(false);
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
 
   // If we land directly on /lobby/:code without a state (e.g. hard refresh),
   // redirect to home to re-join
@@ -63,6 +65,11 @@ export default function Lobby() {
   };
 
   return (
+    <>
+    <ProfileModal
+      playerId={profilePlayerId}
+      onClose={() => setProfilePlayerId(null)}
+    />
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-lg flex flex-col gap-6">
         {/* Room code */}
@@ -72,7 +79,11 @@ export default function Lobby() {
 
         {/* Players */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <PlayerList players={state.players} selfPlayerId={playerId} />
+          <PlayerList
+            players={state.players}
+            selfPlayerId={playerId}
+            onPlayerClick={setProfilePlayerId}
+          />
         </div>
 
         {/* Settings */}
@@ -103,5 +114,6 @@ export default function Lobby() {
         )}
       </div>
     </div>
+    </>
   );
 }
