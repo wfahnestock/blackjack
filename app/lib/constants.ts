@@ -66,6 +66,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
   maxBet: 10000,
 };
 
+export const MAX_CHAT_MESSAGE_LENGTH = 200;
+export const MAX_CHAT_HISTORY = 50;
+
 export const MAX_SPLITS = 3;
 export const MAX_PLAYERS = 6;
 export const ROOM_CODE_LENGTH = 6;
