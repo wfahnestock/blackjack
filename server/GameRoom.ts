@@ -1,14 +1,13 @@
-import { randomUUID } from "crypto";
 import type { Server, Socket } from "socket.io";
 import type {
   Player,
   GameSettings,
   ClientToServerEvents,
   ServerToClientEvents,
+  RoundResult,
 } from "../app/lib/types.js";
 import { DEFAULT_SETTINGS, MAX_PLAYERS } from "../app/lib/constants.js";
 import { GameStateMachine } from "./GameStateMachine.js";
-import type { ChipLedger } from "./ChipLedger.js";
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -23,16 +22,23 @@ export class GameRoom {
     code: string,
     private io: AppServer,
     settings: Partial<GameSettings>,
-    private ledger: ChipLedger
+    flushRound?: (players: Player[], results: RoundResult[]) => Promise<void>
   ) {
     this.code = code;
     const merged: GameSettings = { ...DEFAULT_SETTINGS, ...settings };
     this.machine = new GameStateMachine(
       code,
       merged,
-      (event, data) => this.broadcast(event, data),
-      ledger
+      (event, data) => this.broadcast(event, data)
     );
+
+    if (flushRound) {
+      this.machine.onRoundEnd = (players, results) => {
+        flushRound(players, results).catch((err) =>
+          console.error("[GameRoom] flushRound error", err)
+        );
+      };
+    }
   }
 
   get playerCount(): number {
@@ -51,7 +57,8 @@ export class GameRoom {
     socket: AppSocket,
     playerId: string,
     displayName: string,
-    avatarColor: string
+    avatarColor: string,
+    initialChips: number
   ): { success: boolean; error?: string } {
     if (this.playerCount >= MAX_PLAYERS) {
       return { success: false, error: "Room is full" };
@@ -68,7 +75,6 @@ export class GameRoom {
       return { success: true };
     }
 
-    const chips = this.ledger.getChips(playerId, this.machine.state.settings.dailyChips);
     const isHost = this.playerCount === 0;
     const seatIndex = this.nextSeat();
 
@@ -76,7 +82,7 @@ export class GameRoom {
       playerId,
       displayName,
       seatIndex,
-      chips,
+      chips: initialChips,
       hands: [],
       status: "connected",
       isHost,

@@ -6,6 +6,8 @@ export function useSocket() {
 
   useEffect(() => {
     if (!socket.connected) {
+      // Attach the latest JWT so the server can authenticate this connection
+      socket.auth = { token: localStorage.getItem("bj_auth_token") ?? "" };
       socket.connect();
     }
     return () => {

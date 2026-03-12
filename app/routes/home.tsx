@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Navigate } from "react-router";
 import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/Button";
 import { Input } from "~/components/ui/Input";
-import { PlayerSetup } from "~/components/lobby/PlayerSetup";
-import { usePlayer } from "~/lib/usePlayer";
+import { useAuth } from "~/lib/AuthContext";
 import { useSocket } from "~/lib/useSocket";
 
 export function meta({}: Route.MetaArgs) {
@@ -16,27 +15,47 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Home() {
   const navigate = useNavigate();
+  const { user, token, logout, updateUserChips } = useAuth();
   const socket = useSocket();
-  const { playerId, displayName, avatarColor, setDisplayName, setAvatarColor } = usePlayer();
 
   const [joinCode, setJoinCode] = useState("");
   const [mode, setMode] = useState<"none" | "create" | "join">("none");
   const [loading, setLoading] = useState(false);
+  const [claimLoading, setClaimLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const canProceed = displayName.trim().length >= 2;
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const canClaimDaily = user.lastDailyClaimed !== today;
+
+  const handleClaimDaily = async () => {
+    if (claimLoading || !canClaimDaily) return;
+    setClaimLoading(true);
+    try {
+      const res = await fetch("/api/auth/daily-reward", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = (await res.json()) as { chips: number; alreadyClaimed: boolean };
+      if (!res.ok) return;
+      updateUserChips(data.chips, today);
+    } finally {
+      setClaimLoading(false);
+    }
+  };
 
   const handleCreate = () => {
-    if (!canProceed || loading) return;
-    console.log("[home] handleCreate fired, socket connected:", socket.connected);
+    if (loading) return;
     setLoading(true);
     setError("");
 
     socket.emit(
       "room:create",
-      { displayName: displayName.trim(), playerId, avatarColor },
+      {},
       (res) => {
-        console.log("[home] room:create response:", res);
         setLoading(false);
         if (res.success && res.roomCode) {
           navigate(`/lobby/${res.roomCode}`);
@@ -48,13 +67,13 @@ export default function Home() {
   };
 
   const handleJoin = () => {
-    if (!canProceed || !joinCode.trim() || loading) return;
+    if (!joinCode.trim() || loading) return;
     setLoading(true);
     setError("");
 
     socket.emit(
       "room:join",
-      { roomCode: joinCode.trim().toUpperCase(), displayName: displayName.trim(), playerId, avatarColor },
+      { roomCode: joinCode.trim().toUpperCase() },
       (res) => {
         setLoading(false);
         if (res.success) {
@@ -76,27 +95,47 @@ export default function Home() {
           <p className="text-gray-500 mt-2">Multiplayer · 6-deck shoe</p>
         </div>
 
-        {/* Player setup */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-6">
-          <PlayerSetup
-            displayName={displayName}
-            avatarColor={avatarColor}
-            onNameChange={setDisplayName}
-            onColorChange={setAvatarColor}
-          />
+        {/* Player card */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-5">
+          {/* Player info row */}
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
+              style={{ backgroundColor: user.avatarColor }}
+            >
+              {user.displayName.charAt(0).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-white truncate">{user.displayName}</p>
+              <p className="text-sm text-gray-500">@{user.username}</p>
+            </div>
+            <div className="text-right">
+              <p className="font-bold text-white">{user.chips.toLocaleString()}</p>
+              <p className="text-xs text-gray-500">chips</p>
+            </div>
+          </div>
 
-          {!canProceed && displayName.length > 0 && (
-            <p className="text-xs text-red-400">Name must be at least 2 characters</p>
-          )}
+          {/* Daily reward */}
+          <Button
+            variant={canClaimDaily ? "primary" : "secondary"}
+            size="md"
+            onClick={handleClaimDaily}
+            disabled={!canClaimDaily || claimLoading}
+          >
+            {claimLoading
+              ? "Claiming..."
+              : canClaimDaily
+              ? "Claim Daily Reward (+2,500 chips)"
+              : "Daily Reward Claimed ✓"}
+          </Button>
 
-          {/* Action buttons */}
+          {/* Room actions */}
           {mode === "none" && (
             <div className="flex gap-3">
               <Button
                 variant="primary"
                 size="lg"
                 className="flex-1"
-                disabled={!canProceed}
                 onClick={() => setMode("create")}
               >
                 Create Room
@@ -105,7 +144,6 @@ export default function Home() {
                 variant="secondary"
                 size="lg"
                 className="flex-1"
-                disabled={!canProceed}
                 onClick={() => setMode("join")}
               >
                 Join Room
@@ -119,7 +157,7 @@ export default function Home() {
                 variant="primary"
                 size="lg"
                 onClick={handleCreate}
-                disabled={loading || !canProceed}
+                disabled={loading}
               >
                 {loading ? "Creating..." : "Create Room"}
               </Button>
@@ -142,7 +180,7 @@ export default function Home() {
                 variant="primary"
                 size="lg"
                 onClick={handleJoin}
-                disabled={loading || !canProceed || joinCode.length < 6}
+                disabled={loading || joinCode.length < 6}
               >
                 {loading ? "Joining..." : "Join Room"}
               </Button>
@@ -153,6 +191,14 @@ export default function Home() {
           )}
 
           {error && <p className="text-sm text-red-400 text-center">{error}</p>}
+
+          {/* Sign out */}
+          <button
+            onClick={logout}
+            className="text-xs text-gray-600 hover:text-gray-400 transition-colors self-center"
+          >
+            Sign out
+          </button>
         </div>
       </div>
     </div>

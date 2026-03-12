@@ -124,22 +124,12 @@ export interface RoomJoinResponse {
 
 export interface ClientToServerEvents {
   "room:create": (
-    payload: {
-      displayName: string;
-      playerId: string;
-      avatarColor: string;
-      settings?: Partial<GameSettings>;
-    },
+    payload: { settings?: Partial<GameSettings> },
     callback: (response: RoomCreateResponse) => void
   ) => void;
 
   "room:join": (
-    payload: {
-      roomCode: string;
-      displayName: string;
-      playerId: string;
-      avatarColor: string;
-    },
+    payload: { roomCode: string },
     callback: (response: RoomJoinResponse) => void
   ) => void;
 
