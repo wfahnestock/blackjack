@@ -17,13 +17,7 @@ import * as authService from "./auth/AuthService.js";
 // ─── Express ────────────────────────────────────────────────────────────────
 
 const app = express();
-app.use((req, res, next) => {
-    express.json()
-
-    // Fixes "Cannot GET /" when served over ngrok
-    res.setHeader("Cache-Control", "no-store");
-    next();
-});
+app.use(express.json());
 const httpServer = createServer(app);
 
 // ─── Auth Middleware ─────────────────────────────────────────────────────────
