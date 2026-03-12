@@ -9,7 +9,7 @@ import type {
   ChatMessage,
   RoleInfo,
 } from "../app/lib/types.js";
-import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY } from "../app/lib/constants.js";
+import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY, MODERATOR_ROLE_NAMES } from "../app/lib/constants.js";
 import { GameStateMachine } from "./GameStateMachine.js";
 import * as chatRepo from "./db/ChatRepository.js";
 import * as roleRepo from "./db/RoleRepository.js";
@@ -247,6 +247,31 @@ export class GameRoom {
       .catch((err) => console.error("[GameRoom] chat save error", err));
   }
 
+  handleRemoveMessage(socketId: string, messageId: string): void {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId || !this.hasModerationPrivilege(playerId)) return;
+
+    chatRepo
+      .censorMessage(messageId)
+      .catch((err) => console.error("[GameRoom] censorMessage error", err));
+
+    this.broadcast("chat:message_removed", { messageId });
+  }
+
+  handleClearChat(socketId: string): void {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId || !this.hasModerationPrivilege(playerId)) return;
+
+    const player = this.machine.getPlayer(playerId);
+    if (!player) return;
+
+    chatRepo
+      .clearRoomMessages(this.code)
+      .catch((err) => console.error("[GameRoom] clearRoomMessages error", err));
+
+    this.broadcast("chat:cleared", { clearedBy: player.displayName });
+  }
+
   async sendChatHistory(socket: AppSocket): Promise<void> {
     try {
       const rows = await chatRepo.getRecentMessages(this.code, MAX_CHAT_HISTORY);
@@ -277,6 +302,11 @@ export class GameRoom {
       if (!taken.has(i)) return i;
     }
     return this.playerCount;
+  }
+
+  private hasModerationPrivilege(playerId: string): boolean {
+    const roles = this.playerRolesCache.get(playerId) ?? [];
+    return roles.some((r) => MODERATOR_ROLE_NAMES.has(r.name));
   }
 
   private broadcast(event: string, data: unknown): void {

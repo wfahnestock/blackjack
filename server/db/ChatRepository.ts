@@ -3,6 +3,7 @@ import { db } from "./client.js";
 import { chatMessages } from "./schema.js";
 import type { ChatMessageRow } from "./schema.js";
 
+
 export async function saveMessage(data: {
   roomCode: string;
   playerId: string;
@@ -15,6 +16,19 @@ export async function saveMessage(data: {
     .values(data)
     .returning();
   return row;
+}
+
+/** Marks a single message as censored (moderator removal). */
+export async function censorMessage(messageId: string): Promise<void> {
+  await db
+    .update(chatMessages)
+    .set({ censored: true })
+    .where(eq(chatMessages.id, messageId));
+}
+
+/** Deletes all messages in a room (moderator clear). */
+export async function clearRoomMessages(roomCode: string): Promise<void> {
+  await db.delete(chatMessages).where(eq(chatMessages.roomCode, roomCode));
 }
 
 /**

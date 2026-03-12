@@ -478,6 +478,24 @@ io.on("connection", (socket: AppSocket) => {
     }
   });
 
+  socket.on("chat:remove_message", ({ messageId }) => {
+    for (const [, room] of rooms) {
+      if (socket.rooms.has(room.code)) {
+        room.handleRemoveMessage(socket.id, messageId);
+        break;
+      }
+    }
+  });
+
+  socket.on("chat:clear", () => {
+    for (const [, room] of rooms) {
+      if (socket.rooms.has(room.code)) {
+        room.handleClearChat(socket.id);
+        break;
+      }
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log(`[server] disconnected: ${socket.id}`);
     for (const [code, room] of rooms) {
