@@ -17,7 +17,6 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
         <div className="grid grid-cols-2 gap-x-6 gap-y-1">
           <span>Min bet</span><span className="text-gray-300">{settings.minBet}</span>
           <span>Max bet</span><span className="text-gray-300">{settings.maxBet}</span>
-          <span>Daily chips</span><span className="text-gray-300">{settings.dailyChips}</span>
           <span>Betting timer</span><span className="text-gray-300">{settings.bettingTimerSeconds}s</span>
           <span>Turn timer</span><span className="text-gray-300">{settings.turnTimerSeconds}s</span>
           <span>Count hint</span><span className="text-gray-300">{settings.allowCountingHint ? "On" : "Off"}</span>
@@ -47,14 +46,6 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
           value={settings.maxBet}
           min={settings.minBet}
           onChange={(e) => onChange({ maxBet: Math.max(settings.minBet, Number(e.target.value)) })}
-        />
-        <Input
-          label="Daily Chips"
-          type="number"
-          value={settings.dailyChips}
-          min={100}
-          step={100}
-          onChange={(e) => onChange({ dailyChips: Math.max(100, Number(e.target.value)) })}
         />
         <Input
           label="Betting Timer (s)"

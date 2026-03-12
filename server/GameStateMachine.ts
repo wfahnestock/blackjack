@@ -25,8 +25,6 @@ import {
   canDouble,
   dealerShouldHit,
 } from "./HandEvaluator.js";
-import type { ChipLedger } from "./ChipLedger.js";
-
 function makeHand(bet = 0): Hand {
   return {
     handId: randomUUID(),
@@ -50,12 +48,12 @@ export class GameStateMachine {
   private hiLoCount = 0;
 
   state: GameState;
+  onRoundEnd?: (players: Player[], results: RoundResult[]) => void;
 
   constructor(
     roomCode: string,
     settings: GameSettings,
-    private broadcast: BroadcastFn,
-    private ledger: ChipLedger
+    private broadcast: BroadcastFn
   ) {
     this.state = {
       roomCode,
@@ -143,7 +141,6 @@ export class GameStateMachine {
       // Bankruptcy protection: restore a minimum stake so the player can keep playing.
       if (player.chips === 0 && this.state.settings.bankruptcyProtection) {
         player.chips = 100;
-        this.ledger.setChips(player.playerId, player.chips);
         this.broadcast("game:bankruptcy-relief", { playerId: player.playerId });
       }
     }
@@ -194,15 +191,14 @@ export class GameStateMachine {
     this.phaseChange("dealing", null, null, null);
     this.sync(); // Broadcast the "dealing" phase immediately so clients can react (e.g. sound)
 
-    // Remove players who didn't bet
+    // Remove players who didn't bet (or joined after betting started)
     for (const player of this.state.players) {
-      if (player.hands[0].bet === 0) {
+      if (!player.hands.length || player.hands[0].bet === 0) {
         player.status = "sitting-out";
         player.hands = [];
       } else {
         // Deduct bet from chips now
         player.chips -= player.hands[0].bet;
-        this.ledger.setChips(player.playerId, player.chips);
       }
     }
 
@@ -394,7 +390,6 @@ export class GameStateMachine {
 
     // Deduct additional bet
     player.chips -= hand.bet;
-    this.ledger.setChips(player.playerId, player.chips);
     hand.bet *= 2;
     hand.doubled = true;
 
@@ -430,7 +425,6 @@ export class GameStateMachine {
 
     // Deduct chips for the new hand
     player.chips -= hand.bet;
-    this.ledger.setChips(player.playerId, player.chips);
 
     // Move second card to a new hand
     const splitCard = hand.cards.pop()!;
@@ -571,7 +565,6 @@ export class GameStateMachine {
 
         hand.result = result;
         player.chips += payout;
-        this.ledger.setChips(player.playerId, player.chips);
 
         results.push({ playerId: player.playerId, handId: hand.handId, result, payout });
       }
@@ -582,6 +575,9 @@ export class GameStateMachine {
     this.broadcast("state:dealer-updated", this.state.dealerHand);
     this.broadcast("game:round-result", results);
     this.sync();
+
+    // Persist chips and stats asynchronously
+    this.onRoundEnd?.(this.state.players, results);
 
     // Auto-advance to cleanup after 5 seconds
     this.timer = setTimeout(() => this.startCleanup(), 5000);

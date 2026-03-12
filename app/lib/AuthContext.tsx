@@ -1,0 +1,147 @@
+import {
+  createContext,
+  useContext,
+  useState,
+  type ReactNode,
+} from "react";
+
+export interface AuthUser {
+  playerId: string;
+  username: string;
+  displayName: string;
+  avatarColor: string;
+  chips: number;
+  lastDailyClaimed: string | null;
+}
+
+interface AuthContextValue {
+  user: AuthUser | null;
+  token: string | null;
+  login: (username: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    displayName: string,
+    avatarColor: string,
+    password: string
+  ) => Promise<void>;
+  logout: () => void;
+  /** Update local chip/reward state after a daily claim or round end. */
+  updateUserChips: (chips: number, lastDailyClaimed?: string | null) => void;
+}
+
+const AUTH_TOKEN_KEY = "bj_auth_token";
+const AUTH_PLAYER_KEY = "bj_auth_player";
+
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+interface ServerPlayerResponse {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarColor: string;
+  chips: number;
+  lastDailyClaimed: string | null;
+}
+
+interface AuthApiResponse {
+  token: string;
+  player: ServerPlayerResponse;
+}
+
+async function apiFetch<T>(path: string, body: unknown, token?: string): Promise<T> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(body),
+  });
+  const data = (await res.json()) as T & { error?: string };
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? "Request failed");
+  return data;
+}
+
+function serverPlayerToAuthUser(player: ServerPlayerResponse): AuthUser {
+  return {
+    playerId: player.id,
+    username: player.username,
+    displayName: player.displayName,
+    avatarColor: player.avatarColor,
+    chips: player.chips,
+    lastDailyClaimed: player.lastDailyClaimed,
+  };
+}
+
+function loadStoredUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(AUTH_PLAYER_KEY);
+    return raw ? (JSON.parse(raw) as AuthUser) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [token, setToken] = useState<string | null>(
+    () => localStorage.getItem(AUTH_TOKEN_KEY)
+  );
+  const [user, setUser] = useState<AuthUser | null>(loadStoredUser);
+
+  function storeSession(newToken: string, newUser: AuthUser) {
+    localStorage.setItem(AUTH_TOKEN_KEY, newToken);
+    localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(newUser));
+    setToken(newToken);
+    setUser(newUser);
+  }
+
+  async function login(username: string, password: string): Promise<void> {
+    const data = await apiFetch<AuthApiResponse>("/api/auth/login", { username, password });
+    storeSession(data.token, serverPlayerToAuthUser(data.player));
+  }
+
+  async function register(
+    username: string,
+    displayName: string,
+    avatarColor: string,
+    password: string
+  ): Promise<void> {
+    const data = await apiFetch<AuthApiResponse>("/api/auth/register", {
+      username,
+      displayName,
+      avatarColor,
+      password,
+    });
+    storeSession(data.token, serverPlayerToAuthUser(data.player));
+  }
+
+  function logout(): void {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_PLAYER_KEY);
+    setToken(null);
+    setUser(null);
+  }
+
+  function updateUserChips(chips: number, lastDailyClaimed?: string | null): void {
+    if (!user) return;
+    const updated: AuthUser = {
+      ...user,
+      chips,
+      lastDailyClaimed: lastDailyClaimed !== undefined ? lastDailyClaimed : user.lastDailyClaimed,
+    };
+    setUser(updated);
+    localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used within AuthProvider");
+  return ctx;
+}
