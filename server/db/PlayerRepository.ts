@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "./client.js";
 import { players, playerStats } from "./schema.js";
-import type { Player } from "./schema.js";
+import type { Player, PlayerStats } from "./schema.js";
 
 function utcDateString(): string {
   return new Date().toISOString().slice(0, 10);
@@ -45,6 +45,19 @@ export async function updateChips(playerId: string, chips: number): Promise<void
     .update(players)
     .set({ chips, updatedAt: new Date() })
     .where(eq(players.id, playerId));
+}
+
+export async function findProfileById(
+  id: string
+): Promise<{ player: Player; stats: PlayerStats | null } | null> {
+  const [row] = await db
+    .select()
+    .from(players)
+    .leftJoin(playerStats, eq(playerStats.playerId, players.id))
+    .where(eq(players.id, id));
+
+  if (!row) return null;
+  return { player: row.players, stats: row.player_stats ?? null };
 }
 
 export async function claimDailyReward(

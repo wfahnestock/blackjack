@@ -156,6 +156,42 @@ app.post("/api/auth/daily-reward", requireAuth, async (req: AuthedRequest, res) 
   }
 });
 
+app.get("/api/players/:id/profile", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const result = await playerRepo.findProfileById(req.params["id"] as string);
+    if (!result) {
+      res.status(404).json({ error: "Player not found" });
+      return;
+    }
+    const { player, stats } = result;
+    const empty = { handsPlayed: 0, handsWon: 0, handsLost: 0, handsPushed: 0, blackjacks: 0, totalWagered: 0, netWinnings: 0, biggestWin: 0, biggestBet: 0, splitsMade: 0, doublesMade: 0, timesBusted: 0 };
+    res.json({
+      playerId: player.id,
+      username: player.username,
+      displayName: player.displayName,
+      avatarColor: player.avatarColor,
+      chips: player.chips,
+      stats: stats ? {
+        handsPlayed: stats.handsPlayed,
+        handsWon: stats.handsWon,
+        handsLost: stats.handsLost,
+        handsPushed: stats.handsPushed,
+        blackjacks: stats.blackjacks,
+        totalWagered: stats.totalWagered,
+        netWinnings: stats.netWinnings,
+        biggestWin: stats.biggestWin,
+        biggestBet: stats.biggestBet,
+        splitsMade: stats.splitsMade,
+        doublesMade: stats.doublesMade,
+        timesBusted: stats.timesBusted,
+      } : empty,
+    });
+  } catch (err) {
+    console.error("[profile]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 
 type SocketData = { playerId: string; username: string };
