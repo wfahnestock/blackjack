@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Navigate } from "react-router";
 import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/Button";
@@ -18,6 +18,17 @@ export default function Home() {
   const navigate = useNavigate();
   const { user, token, logout, updateUserChips } = useAuth();
   const socket = useSocket();
+
+  // Refresh chips from DB every time the home screen is visited
+  useEffect(() => {
+    if (!user || !token) return;
+    fetch(`/api/players/${user.playerId}/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.chips != null) updateUserChips(data.chips); })
+      .catch(() => {/* silently ignore — stale chips are non-critical */});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [joinCode, setJoinCode] = useState("");
   const [mode, setMode] = useState<"none" | "create" | "join">("none");
