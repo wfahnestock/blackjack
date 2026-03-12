@@ -56,6 +56,11 @@ export default function Room() {
     );
   }
 
+  function handleLeave() {
+    socket.emit("room:leave");
+    navigate("/");
+  }
+
   return (
     <>
       <ProfileModal
@@ -71,6 +76,7 @@ export default function Room() {
         onDouble={(handId) => socket.emit("game:double", { handId })}
         onSplit={(handId) => socket.emit("game:split", { handId })}
         onPlayerClick={setProfilePlayerId}
+        onLeave={handleLeave}
       />
 
       {/* Bankruptcy relief toast — only shown to the affected player */}
