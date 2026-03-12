@@ -10,6 +10,7 @@
     "start": "react-router-serve ./server/index.js",
     "typecheck": "react-router typegen && tsc",
     "db:push": "drizzle-kit push",
+    "db:seed": "tsx server/db/seed.ts",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
