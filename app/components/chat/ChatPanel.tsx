@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { ChatMessage, RoleInfo } from "~/lib/types";
-import { MAX_CHAT_MESSAGE_LENGTH } from "~/lib/constants";
+import { MAX_CHAT_MESSAGE_LENGTH, MODERATOR_ROLE_NAMES } from "~/lib/constants";
 
 /**
  * Maps the `color` key stored in the DB to a Tailwind text-color class.
@@ -21,8 +21,11 @@ const ROLE_TEXT_COLORS: Record<string, string> = {
 interface ChatPanelProps {
   messages: ChatMessage[];
   selfPlayerId: string;
+  selfRoles?: RoleInfo[];
   rateLimitError?: string;
   onSend: (message: string) => void;
+  onRemoveMessage?: (messageId: string) => void;
+  onClearChat?: () => void;
   /** If provided, a close (×) button is shown — used for mobile overlays. */
   onClose?: () => void;
   className?: string;
@@ -45,14 +48,19 @@ function formatTime(timestamp: number): string {
 export function ChatPanel({
   messages,
   selfPlayerId,
+  selfRoles = [],
   rateLimitError,
   onSend,
+  onRemoveMessage,
+  onClearChat,
   onClose,
   className = "",
 }: ChatPanelProps) {
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const isModerator = selfRoles.some((r) => MODERATOR_ROLE_NAMES.has(r.name));
 
   // Auto-scroll to bottom whenever a new message arrives
   useEffect(() => {
@@ -84,17 +92,31 @@ export function ChatPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 shrink-0">
         <span className="text-sm font-semibold text-gray-300">Chat</span>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-600 hover:text-gray-300 transition-colors p-0.5 rounded"
-            aria-label="Close chat"
-          >
-            <svg viewBox="0 0 16 16" className="w-4 h-4 fill-current">
-              <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
-            </svg>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isModerator && onClearChat && (
+            <button
+              onClick={onClearChat}
+              className="text-gray-600 hover:text-red-400 transition-colors p-0.5 rounded"
+              aria-label="Clear chat"
+              title="Clear all messages"
+            >
+              <svg viewBox="0 0 16 16" className="w-4 h-4 fill-current">
+                <path d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15H5.405a1.748 1.748 0 0 1-1.741-1.576l-.66-6.6a.75.75 0 1 1 1.492-.149Z" />
+              </svg>
+            </button>
+          )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-gray-600 hover:text-gray-300 transition-colors p-0.5 rounded"
+              aria-label="Close chat"
+            >
+              <svg viewBox="0 0 16 16" className="w-4 h-4 fill-current">
+                <path d="M3.72 3.72a.75.75 0 0 1 1.06 0L8 6.94l3.22-3.22a.75.75 0 1 1 1.06 1.06L9.06 8l3.22 3.22a.75.75 0 1 1-1.06 1.06L8 9.06l-3.22 3.22a.75.75 0 0 1-1.06-1.06L6.94 8 3.72 4.78a.75.75 0 0 1 0-1.06Z" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
@@ -105,9 +127,19 @@ export function ChatPanel({
           </p>
         )}
         {messages.map((msg) => {
+          if (msg.isSystem) {
+            return (
+              <div key={msg.messageId} className="flex items-center justify-center py-1">
+                <span className="text-xs text-gray-500 italic select-none">
+                  {msg.message}
+                </span>
+              </div>
+            );
+          }
+
           const isSelf = msg.playerId === selfPlayerId;
           return (
-            <div key={msg.messageId} className={`flex flex-col gap-0.5 ${isSelf ? "items-end" : "items-start"}`}>
+            <div key={msg.messageId} className={`flex flex-col gap-0.5 group ${isSelf ? "items-end" : "items-start"}`}>
               {/* Name + time row */}
               <div className={`flex items-center gap-1.5 ${isSelf ? "flex-row-reverse" : "flex-row"}`}>
                 {/* Avatar dot */}
@@ -125,18 +157,32 @@ export function ChatPanel({
                 <span className="text-xs text-gray-600">{formatTime(msg.timestamp)}</span>
               </div>
 
-              {/* Bubble */}
-              <div
-                className={`
-                  max-w-[85%] px-3 py-1.5 rounded-xl text-sm leading-snug break-words
-                  ${isSelf
-                    ? "bg-emerald-800/60 text-emerald-50 rounded-tr-sm"
-                    : "bg-gray-800 text-gray-200 rounded-tl-sm"
-                  }
-                  ${msg.censored ? "italic text-gray-500" : ""}
-                `}
-              >
-                {msg.censored ? "[message removed]" : msg.message}
+              {/* Bubble row: bubble + optional remove button */}
+              <div className={`flex items-center gap-1.5 max-w-[90%] ${isSelf ? "flex-row-reverse" : "flex-row"}`}>
+                <div
+                  className={`
+                    px-3 py-1.5 rounded-xl text-sm leading-snug break-words min-w-0
+                    ${isSelf
+                      ? "bg-emerald-800/60 text-emerald-50 rounded-tr-sm"
+                      : "bg-gray-800 text-gray-200 rounded-tl-sm"
+                    }
+                    ${msg.censored ? "italic text-gray-500" : ""}
+                  `}
+                >
+                  {msg.censored ? "message removed" : msg.message}
+                </div>
+                {isModerator && !msg.censored && onRemoveMessage && (
+                  <button
+                    onClick={() => onRemoveMessage(msg.messageId)}
+                    className="opacity-0 group-hover:opacity-100 shrink-0 text-gray-600 hover:text-red-400 transition-all p-0.5 rounded"
+                    aria-label="Remove message"
+                    title="Remove message"
+                  >
+                    <svg viewBox="0 0 16 16" className="w-3 h-3 fill-current">
+                      <path d="M6.5 1.75a.25.25 0 0 1 .25-.25h2.5a.25.25 0 0 1 .25.25V3h-3Zm4.5 0V3h2.25a.75.75 0 0 1 0 1.5H2.75a.75.75 0 0 1 0-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75ZM4.496 6.675l.66 6.6a.25.25 0 0 0 .249.225h5.19a.25.25 0 0 0 .249-.225l.66-6.6a.75.75 0 0 1 1.492.149l-.66 6.6A1.748 1.748 0 0 1 10.595 15H5.405a1.748 1.748 0 0 1-1.741-1.576l-.66-6.6a.75.75 0 1 1 1.492-.149Z" />
+                    </svg>
+                  </button>
+                )}
               </div>
             </div>
           );
