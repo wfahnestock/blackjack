@@ -7,10 +7,12 @@ import type {
   ServerToClientEvents,
   RoundResult,
   ChatMessage,
+  RoleInfo,
 } from "../app/lib/types.js";
 import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY } from "../app/lib/constants.js";
 import { GameStateMachine } from "./GameStateMachine.js";
 import * as chatRepo from "./db/ChatRepository.js";
+import * as roleRepo from "./db/RoleRepository.js";
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -23,9 +25,10 @@ interface ChatRateLimit {
 export class GameRoom {
   readonly code: string;
   private machine: GameStateMachine;
-  private socketToPlayer = new Map<string, string>(); // socketId → playerId
-  private playerToSocket = new Map<string, string>(); // playerId → socketId
+  private socketToPlayer = new Map<string, string>();     // socketId → playerId
+  private playerToSocket = new Map<string, string>();     // playerId → socketId
   private chatRateLimits = new Map<string, ChatRateLimit>(); // playerId → rate limit state
+  private playerRolesCache = new Map<string, RoleInfo[]>(); // playerId → roles (cached on join)
 
   constructor(
     code: string,
@@ -67,7 +70,8 @@ export class GameRoom {
     playerId: string,
     displayName: string,
     avatarColor: string,
-    initialChips: number
+    initialChips: number,
+    roles: RoleInfo[] = []
   ): { success: boolean; error?: string } {
     if (this.playerCount >= MAX_PLAYERS) {
       return { success: false, error: "Room is full" };
@@ -78,6 +82,7 @@ export class GameRoom {
       // Reconnect
       this.socketToPlayer.set(socket.id, playerId);
       this.playerToSocket.set(playerId, socket.id);
+      this.playerRolesCache.set(playerId, roles);
       socket.join(this.code);
       this.machine.updatePlayer(playerId, { status: "connected", displayName });
       this.broadcast("state:player-updated", this.machine.getPlayer(playerId)!);
@@ -101,6 +106,7 @@ export class GameRoom {
     this.machine.addPlayer(player);
     this.socketToPlayer.set(socket.id, playerId);
     this.playerToSocket.set(playerId, socket.id);
+    this.playerRolesCache.set(playerId, roles);
     socket.join(this.code);
 
     this.broadcast("state:sync", this.machine.state);
@@ -113,6 +119,7 @@ export class GameRoom {
 
     this.socketToPlayer.delete(socketId);
     this.playerToSocket.delete(playerId);
+    this.playerRolesCache.delete(playerId);
 
     const player = this.machine.getPlayer(playerId);
     if (player) {
@@ -224,6 +231,7 @@ export class GameRoom {
       message,
       censored: false,
       timestamp: now,
+      roles: this.playerRolesCache.get(playerId) ?? [],
     };
 
     this.broadcast("chat:message", chatMessage);
@@ -242,6 +250,11 @@ export class GameRoom {
   async sendChatHistory(socket: AppSocket): Promise<void> {
     try {
       const rows = await chatRepo.getRecentMessages(this.code, MAX_CHAT_HISTORY);
+
+      // Batch-fetch roles for all unique senders in one query
+      const uniquePlayerIds = [...new Set(rows.map((r) => r.playerId))];
+      const rolesMap = await roleRepo.getPlayerRolesBatch(uniquePlayerIds);
+
       const history: ChatMessage[] = rows.map((row) => ({
         messageId: row.id,
         playerId: row.playerId,
@@ -250,6 +263,7 @@ export class GameRoom {
         message: row.message,
         censored: row.censored,
         timestamp: row.createdAt.getTime(),
+        roles: rolesMap.get(row.playerId) ?? [],
       }));
       socket.emit("chat:history", history);
     } catch (err) {
