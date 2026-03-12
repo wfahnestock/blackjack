@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { GameTable } from "~/components/game/GameTable";
 import { ProfileModal } from "~/components/ui/ProfileModal";
+import { ChatPanel } from "~/components/chat/ChatPanel";
 import { useSocket } from "~/lib/useSocket";
 import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
 import { useSoundEffects } from "~/lib/useSoundEffects";
+import { useChat } from "~/lib/useChat";
 
 export function meta() {
   return [{ title: "Blackjack — Game" }];
@@ -18,9 +20,27 @@ export default function Room() {
   const state = useGameState();
   const { playerId } = usePlayer();
   useSoundEffects(state, playerId);
+  const chat = useChat(socket);
 
   const [bankruptcyToast, setBankruptcyToast] = useState(false);
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
+  // Desktop: right-side panel. Mobile: full-width bottom sheet.
+  const [chatOpen, setChatOpen] = useState(false);
+
+  function handleChatToggle() {
+    if (chatOpen) {
+      setChatOpen(false);
+      chat.closePanel();
+    } else {
+      setChatOpen(true);
+      chat.openPanel();
+    }
+  }
+
+  function handleChatClose() {
+    setChatOpen(false);
+    chat.closePanel();
+  }
 
   // Show a toast when the server grants this player a bankruptcy relief stake
   useEffect(() => {
@@ -67,6 +87,7 @@ export default function Room() {
         playerId={profilePlayerId}
         onClose={() => setProfilePlayerId(null)}
       />
+
       <GameTable
         state={state}
         selfPlayerId={playerId}
@@ -77,7 +98,29 @@ export default function Room() {
         onSplit={(handId) => socket.emit("game:split", { handId })}
         onPlayerClick={setProfilePlayerId}
         onLeave={handleLeave}
+        chatUnreadCount={chat.unreadCount}
+        onChatToggle={handleChatToggle}
       />
+
+      {/* Chat panel — fixed overlay, right side on desktop, bottom sheet on mobile */}
+      {chatOpen && (
+        <div
+          className="
+            fixed z-40
+            bottom-0 left-0 right-0 h-[60vh]
+            sm:bottom-0 sm:top-0 sm:left-auto sm:right-0 sm:w-80 sm:h-auto
+          "
+        >
+          <ChatPanel
+            messages={chat.messages}
+            selfPlayerId={playerId}
+            rateLimitError={chat.rateLimitError}
+            onSend={chat.sendMessage}
+            onClose={handleChatClose}
+            className="h-full rounded-b-none sm:rounded-2xl sm:rounded-r-none sm:rounded-tr-none border-r-0 sm:border-r-0"
+          />
+        </div>
+      )}
 
       {/* Bankruptcy relief toast — only shown to the affected player */}
       {bankruptcyToast && (
