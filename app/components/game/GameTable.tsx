@@ -25,6 +25,10 @@ interface GameTableProps {
   onSplit: (handId: string) => void;
   onPlayerClick?: (playerId: string) => void;
   onLeave?: () => void;
+  /** Number of unread chat messages; shows badge on the toggle button. */
+  chatUnreadCount?: number;
+  /** Called when the user clicks the chat toggle button in the top bar. */
+  onChatToggle?: () => void;
 }
 
 export function GameTable({
@@ -37,6 +41,8 @@ export function GameTable({
   onSplit,
   onPlayerClick,
   onLeave,
+  chatUnreadCount = 0,
+  onChatToggle,
 }: GameTableProps) {
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const self = state.players.find((p) => p.playerId === selfPlayerId);
@@ -126,7 +132,25 @@ export function GameTable({
           )}
         </div>
 
-        <ShoeIndicator shoe={state.shoe} hiLoCount={state.hiLoCount} />
+        <div className="flex items-center gap-3">
+          {onChatToggle && (
+            <button
+              onClick={onChatToggle}
+              title="Toggle chat"
+              className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors text-sm"
+            >
+              <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current">
+                <path d="M3.505 2.365A41.369 41.369 0 0 1 9 2c1.863 0 3.697.124 5.495.365 1.247.167 2.18 1.108 2.435 2.268a4.45 4.45 0 0 0-.989-.57c-1.606-.63-3.448-.952-5.38-1.024L9 3.024l-.561.014c-1.933.072-3.774.395-5.38 1.024a4.45 4.45 0 0 0-.989.57c.255-1.16 1.188-2.1 2.435-2.267ZM1.5 9.4c0-1.95 1.268-3.562 3.01-4.12C5.965 4.694 7.457 4.5 9 4.5s3.035.194 4.49.78c1.742.558 3.01 2.17 3.01 4.12v.6c0 1.95-1.268 3.562-3.01 4.12a13.5 13.5 0 0 1-2.196.494L9 15.5l-2.294-.486a13.5 13.5 0 0 1-2.196-.494C2.768 13.562 1.5 11.95 1.5 10v-.6Z" />
+              </svg>
+              {chatUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-0.5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center leading-none">
+                  {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
+                </span>
+              )}
+            </button>
+          )}
+          <ShoeIndicator shoe={state.shoe} hiLoCount={state.hiLoCount} />
+        </div>
       </div>
 
       {/* Dealer area */}

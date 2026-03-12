@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, date, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, integer, date, timestamp, boolean } from "drizzle-orm/pg-core";
 
 export const players = pgTable("players", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -31,6 +31,19 @@ export const playerStats = pgTable("player_stats", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const chatMessages = pgTable("chat_messages", {
+  id:          uuid("id").primaryKey().defaultRandom(),
+  roomCode:    varchar("room_code",    { length: 6   }).notNull(),
+  playerId:    uuid("player_id").notNull(),
+  displayName: varchar("display_name", { length: 50  }).notNull(),
+  avatarColor: varchar("avatar_color", { length: 20  }).notNull(),
+  message:     varchar("message",      { length: 200 }).notNull(),
+  /** Reserved for a future censor/profanity pass. Always false for now. */
+  censored:    boolean("censored").notNull().default(false),
+  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export type Player = typeof players.$inferSelect;
 export type NewPlayer = typeof players.$inferInsert;
 export type PlayerStats = typeof playerStats.$inferSelect;
+export type ChatMessageRow = typeof chatMessages.$inferSelect;

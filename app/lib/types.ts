@@ -97,6 +97,19 @@ export interface GameState {
   hiLoCount: number | null;
 }
 
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export interface ChatMessage {
+  messageId: string;
+  playerId: string;
+  displayName: string;
+  avatarColor: string;
+  message: string;
+  /** Always false for now; reserved for a future profanity/censor pass. */
+  censored: boolean;
+  timestamp: number; // epoch ms
+}
+
 // ─── Round Results ─────────────────────────────────────────────────────────────
 
 export interface RoundResult {
@@ -146,6 +159,8 @@ export interface ClientToServerEvents {
   "game:double": (payload: { handId: string }) => void;
   "game:split": (payload: { handId: string }) => void;
   "game:insurance": (payload: { take: boolean }) => void;
+
+  "chat:send": (payload: { message: string }) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -180,4 +195,8 @@ export interface ServerToClientEvents {
 
   "error": (payload: { code: string; message: string }) => void;
   "notification": (payload: { type: "info" | "warning"; message: string }) => void;
+
+  "chat:message": (message: ChatMessage) => void;
+  "chat:history": (messages: ChatMessage[]) => void;
+  "chat:error": (payload: { message: string }) => void;
 }

@@ -339,6 +339,7 @@ io.on("connection", (socket: AppSocket) => {
       }
 
       callback({ success: true, roomCode: code });
+      room.sendChatHistory(socket).catch(console.error);
     } catch (err) {
       console.error("[server] room:create error", err);
       callback({ success: false, error: "Server error" });
@@ -374,6 +375,7 @@ io.on("connection", (socket: AppSocket) => {
       }
 
       callback({ success: true, state: room.state });
+      room.sendChatHistory(socket).catch(console.error);
     } catch (err) {
       console.error("[server] room:join error", err);
       callback({ success: false, error: "Server error" });
@@ -451,6 +453,15 @@ io.on("connection", (socket: AppSocket) => {
     for (const [, room] of rooms) {
       if (socket.rooms.has(room.code)) {
         room.handleSplit(socket.id, handId);
+        break;
+      }
+    }
+  });
+
+  socket.on("chat:send", ({ message }) => {
+    for (const [, room] of rooms) {
+      if (socket.rooms.has(room.code)) {
+        room.handleChatMessage(socket.id, message);
         break;
       }
     }
