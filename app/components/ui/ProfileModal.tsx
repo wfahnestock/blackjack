@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { useAuth } from "~/lib/AuthContext";
 import { formatChips } from "~/lib/handUtils";
+import type { RoleInfo } from "~/lib/types";
 
 interface PlayerProfile {
   playerId: string;
@@ -9,6 +10,7 @@ interface PlayerProfile {
   displayName: string;
   avatarColor: string;
   chips: number;
+  roles: RoleInfo[];
   stats: {
     handsPlayed: number;
     handsWon: number;
@@ -86,6 +88,13 @@ export function ProfileModal({ playerId, onClose }: ProfileModalProps) {
                 {profile.displayName}
               </p>
               <p className="text-sm text-gray-500">@{profile.username}</p>
+              {profile.roles.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {profile.roles.map((role) => (
+                    <RoleBadge key={role.id} role={role} />
+                  ))}
+                </div>
+              )}
               <p className="text-sm text-yellow-500 font-medium mt-0.5">
                 {formatChips(profile.chips)} chips
               </p>
@@ -152,6 +161,36 @@ export function ProfileModal({ playerId, onClose }: ProfileModalProps) {
         </div>
       )}
     </Modal>
+  );
+}
+
+/**
+ * Tailwind class map keyed by the `color` value stored in the `roles` table.
+ * All strings are written out in full so Tailwind's scanner picks them up.
+ * Add a new entry here when a new color is introduced via admin tooling.
+ */
+const ROLE_COLOR_CLASSES: Record<string, { bg: string; text: string; border: string }> = {
+  sky:     { bg: "bg-sky-500/20",     text: "text-sky-400",     border: "border-sky-500/30"     },
+  amber:   { bg: "bg-amber-500/20",   text: "text-amber-400",   border: "border-amber-500/30"   },
+  violet:  { bg: "bg-violet-500/20",  text: "text-violet-400",  border: "border-violet-500/30"  },
+  emerald: { bg: "bg-emerald-500/20", text: "text-emerald-400", border: "border-emerald-500/30" },
+  rose:    { bg: "bg-rose-500/20",    text: "text-rose-400",    border: "border-rose-500/30"    },
+  blue:    { bg: "bg-blue-500/20",    text: "text-blue-400",    border: "border-blue-500/30"    },
+  purple:  { bg: "bg-purple-500/20",  text: "text-purple-400",  border: "border-purple-500/30"  },
+  red:     { bg: "bg-red-500/20",     text: "text-red-400",     border: "border-red-500/30"     },
+  // fallback for unknown colors defined via admin tooling:
+  default: { bg: "bg-gray-500/20",    text: "text-gray-400",    border: "border-gray-500/30"    },
+};
+
+function RoleBadge({ role }: { role: RoleInfo }) {
+  const colors = ROLE_COLOR_CLASSES[role.color] ?? ROLE_COLOR_CLASSES.default;
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-semibold border ${colors.bg} ${colors.text} ${colors.border}`}
+    >
+      <i className={`fa-solid ${role.icon} text-xs`} />
+      {role.label}
+    </span>
   );
 }
 
