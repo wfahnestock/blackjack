@@ -66,8 +66,8 @@ app.post("/api/auth/register", async (req, res) => {
       res.status(400).json({ error: "Display name must be 2–50 characters" });
       return;
     }
-    if (!password || password.length < 8) {
-      res.status(400).json({ error: "Password must be at least 8 characters" });
+    if (!password || password.length < 12 || password.length > 128) {
+      res.status(400).json({ error: "Password must be between 12 and 128 characters" });
       return;
     }
 
