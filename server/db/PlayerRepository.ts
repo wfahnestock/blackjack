@@ -82,6 +82,7 @@ export async function updateProfile(
   return updated;
 }
 
+
 export async function claimDailyReward(
   playerId: string,
   dailyAmount: number

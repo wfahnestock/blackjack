@@ -11,6 +11,7 @@ import type {
 import { ROOM_CODE_LENGTH, DEFAULT_SETTINGS } from "../app/lib/constants.js";
 import { GameRoom } from "./GameRoom.js";
 import * as playerRepo from "./db/PlayerRepository.js";
+import * as roleRepo from "./db/RoleRepository.js";
 import * as statsRepo from "./db/StatsRepository.js";
 import * as authService from "./auth/AuthService.js";
 
@@ -87,6 +88,7 @@ app.post("/api/auth/register", async (req, res) => {
     );
 
     const token = authService.signToken({ playerId: player.id, username: player.username });
+    const playerRoles = await roleRepo.getPlayerRoles(player.id);
     res.json({
       token,
       player: {
@@ -96,6 +98,7 @@ app.post("/api/auth/register", async (req, res) => {
         avatarColor: player.avatarColor,
         chips: player.chips,
         lastDailyClaimed: player.lastDailyClaimed,
+        roles: playerRoles,
       },
     });
   } catch (err) {
@@ -126,6 +129,7 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     const token = authService.signToken({ playerId: player.id, username: player.username });
+    const playerRoles = await roleRepo.getPlayerRoles(player.id);
     res.json({
       token,
       player: {
@@ -135,6 +139,7 @@ app.post("/api/auth/login", async (req, res) => {
         avatarColor: player.avatarColor,
         chips: player.chips,
         lastDailyClaimed: player.lastDailyClaimed,
+        roles: playerRoles,
       },
     });
   } catch (err) {
@@ -164,6 +169,7 @@ app.get("/api/players/:id/profile", requireAuth, async (req: AuthedRequest, res)
       return;
     }
     const { player, stats } = result;
+    const playerRoles = await roleRepo.getPlayerRoles(player.id);
     const empty = { handsPlayed: 0, handsWon: 0, handsLost: 0, handsPushed: 0, blackjacks: 0, totalWagered: 0, netWinnings: 0, biggestWin: 0, biggestBet: 0, splitsMade: 0, doublesMade: 0, timesBusted: 0 };
     res.json({
       playerId: player.id,
@@ -171,6 +177,7 @@ app.get("/api/players/:id/profile", requireAuth, async (req: AuthedRequest, res)
       displayName: player.displayName,
       avatarColor: player.avatarColor,
       chips: player.chips,
+      roles: playerRoles,
       stats: stats ? {
         handsPlayed: stats.handsPlayed,
         handsWon: stats.handsWon,
@@ -324,12 +331,14 @@ io.on("connection", (socket: AppSocket) => {
       );
       rooms.set(code, room);
 
+      const playerRoles = await roleRepo.getPlayerRoles(playerId);
       const result = room.addPlayer(
         socket,
         playerId,
         player.displayName,
         player.avatarColor,
-        player.chips
+        player.chips,
+        playerRoles
       );
       if (!result.success) {
         rooms.delete(code);
@@ -362,12 +371,14 @@ io.on("connection", (socket: AppSocket) => {
         return;
       }
 
+      const playerRoles = await roleRepo.getPlayerRoles(playerId);
       const result = room.addPlayer(
         socket,
         playerId,
         player.displayName,
         player.avatarColor,
-        player.chips
+        player.chips,
+        playerRoles
       );
       if (!result.success) {
         callback({ success: false, error: result.error });
