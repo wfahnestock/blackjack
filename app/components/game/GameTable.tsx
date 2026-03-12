@@ -14,6 +14,7 @@ interface GameTableProps {
   onStand: (handId: string) => void;
   onDouble: (handId: string) => void;
   onSplit: (handId: string) => void;
+  onPlayerClick?: (playerId: string) => void;
 }
 
 export function GameTable({
@@ -24,6 +25,7 @@ export function GameTable({
   onStand,
   onDouble,
   onSplit,
+  onPlayerClick,
 }: GameTableProps) {
   const self = state.players.find((p) => p.playerId === selfPlayerId);
   const isSelfTurn = state.activePlayerId === selfPlayerId;
@@ -77,6 +79,7 @@ export function GameTable({
               activeHandId={state.activeHandId}
               isCurrentPlayer={state.activePlayerId === player.playerId}
               isSelf={player.playerId === selfPlayerId}
+              onPlayerClick={onPlayerClick}
             />
           ))}
         </div>

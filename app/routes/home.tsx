@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from "react-router";
 import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/Button";
 import { Input } from "~/components/ui/Input";
+import { ProfileModal } from "~/components/ui/ProfileModal";
 import { useAuth } from "~/lib/AuthContext";
 import { useSocket } from "~/lib/useSocket";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [claimLoading, setClaimLoading] = useState(false);
   const [error, setError] = useState("");
+  const [profileOpen, setProfileOpen] = useState(false);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -86,6 +88,11 @@ export default function Home() {
   };
 
   return (
+    <>
+    <ProfileModal
+      playerId={profileOpen ? user.playerId : null}
+      onClose={() => setProfileOpen(false)}
+    />
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md flex flex-col gap-8">
         {/* Header */}
@@ -98,7 +105,11 @@ export default function Home() {
         {/* Player card */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-5">
           {/* Player info row */}
-          <div className="flex items-center gap-3">
+          <button
+            className="flex items-center gap-3 w-full text-left hover:bg-gray-800/50 rounded-xl transition-colors -mx-1 px-1 py-1"
+            onClick={() => setProfileOpen(true)}
+            title="View your profile"
+          >
             <div
               className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
               style={{ backgroundColor: user.avatarColor }}
@@ -113,7 +124,7 @@ export default function Home() {
               <p className="font-bold text-white">{user.chips.toLocaleString()}</p>
               <p className="text-xs text-gray-500">chips</p>
             </div>
-          </div>
+          </button>
 
           {/* Daily reward */}
           <Button
@@ -202,5 +213,6 @@ export default function Home() {
         </div>
       </div>
     </div>
+    </>
   );
 }

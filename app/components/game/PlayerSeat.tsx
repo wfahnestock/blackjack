@@ -205,9 +205,10 @@ interface PlayerSeatProps {
   activeHandId:    string | null;
   isCurrentPlayer: boolean;
   isSelf:          boolean;
+  onPlayerClick?:  (playerId: string) => void;
 }
 
-export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf }: PlayerSeatProps) {
+export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPlayerClick }: PlayerSeatProps) {
   const isDisconnected = player.status === "disconnected";
   const payoutFloaters = usePayoutFloaters(player);
   const actionFloaters = useActionFloaters(player);
@@ -222,12 +223,29 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf }: Pl
       `}
     >
       {/* Avatar + Name */}
-      <div className="flex items-center gap-2">
-        <div
-          className="w-7 h-7 rounded-full flex-shrink-0 ring-2 ring-gray-700"
-          style={{ backgroundColor: player.avatarColor }}
-        />
-        <div className="flex flex-col min-w-0">
+      <button
+        className={`group flex items-center gap-2 ${onPlayerClick ? "hover:opacity-80 transition-opacity cursor-pointer" : "cursor-default"}`}
+        onClick={() => onPlayerClick?.(player.playerId)}
+        disabled={!onPlayerClick}
+        title={onPlayerClick ? `View ${player.displayName}'s profile` : undefined}
+      >
+        <div className="relative">
+          <div
+            className="w-7 h-7 rounded-full flex-shrink-0 ring-2 ring-gray-700"
+            style={{ backgroundColor: player.avatarColor }}
+          />
+          {onPlayerClick && (
+            <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="w-3.5 h-3.5 rounded-full bg-gray-900 border border-gray-600 flex items-center justify-center">
+                <svg viewBox="0 0 12 12" className="w-2 h-2 text-gray-400 fill-current">
+                  <circle cx="6" cy="4" r="2.2" />
+                  <path d="M1.5 10c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" />
+                </svg>
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col min-w-0 text-left">
           <span className={`text-sm font-semibold truncate max-w-[80px] ${isSelf ? "text-emerald-400" : "text-gray-200"}`}>
             {player.displayName}
             {isSelf && " (you)"}
@@ -236,7 +254,7 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf }: Pl
             {formatChips(player.chips)} chips
           </span>
         </div>
-      </div>
+      </button>
 
       {/* Status */}
       <StatusBadge status={player.status} />
