@@ -1,3 +1,4 @@
+import { nanoid } from "nanoid";
 import type { Server, Socket } from "socket.io";
 import type {
   Player,
@@ -5,18 +6,26 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
   RoundResult,
+  ChatMessage,
 } from "../app/lib/types.js";
-import { DEFAULT_SETTINGS, MAX_PLAYERS } from "../app/lib/constants.js";
+import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY } from "../app/lib/constants.js";
 import { GameStateMachine } from "./GameStateMachine.js";
+import * as chatRepo from "./db/ChatRepository.js";
 
 type AppSocket = Socket<ClientToServerEvents, ServerToClientEvents>;
 type AppServer = Server<ClientToServerEvents, ServerToClientEvents>;
+
+interface ChatRateLimit {
+  lastAt: number;
+  lastContent: string;
+}
 
 export class GameRoom {
   readonly code: string;
   private machine: GameStateMachine;
   private socketToPlayer = new Map<string, string>(); // socketId → playerId
   private playerToSocket = new Map<string, string>(); // playerId → socketId
+  private chatRateLimits = new Map<string, ChatRateLimit>(); // playerId → rate limit state
 
   constructor(
     code: string,
@@ -173,6 +182,79 @@ export class GameRoom {
     const playerId = this.socketToPlayer.get(socketId);
     if (!playerId) return;
     this.machine.handleSplit(playerId, handId);
+  }
+
+  handleChatMessage(socketId: string, rawMessage: string): void {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId) return;
+
+    const player = this.machine.getPlayer(playerId);
+    if (!player) return;
+
+    const message = rawMessage.trim();
+    if (message.length === 0 || message.length > MAX_CHAT_MESSAGE_LENGTH) return;
+
+    const now = Date.now();
+    const rateLimit = this.chatRateLimits.get(playerId) ?? { lastAt: 0, lastContent: "" };
+
+    if (message === rateLimit.lastContent) {
+      if (now - rateLimit.lastAt < 15_000) {
+        const remaining = Math.ceil((15_000 - (now - rateLimit.lastAt)) / 1000);
+        (this.io.to(socketId) as any).emit("chat:error", {
+          message: `Wait ${remaining}s before repeating the same message.`,
+        });
+        return;
+      }
+    } else {
+      if (now - rateLimit.lastAt < 2_000) {
+        (this.io.to(socketId) as any).emit("chat:error", {
+          message: "You're sending messages too fast. Please wait a moment.",
+        });
+        return;
+      }
+    }
+
+    this.chatRateLimits.set(playerId, { lastAt: now, lastContent: message });
+
+    const chatMessage: ChatMessage = {
+      messageId: nanoid(),
+      playerId,
+      displayName: player.displayName,
+      avatarColor: player.avatarColor,
+      message,
+      censored: false,
+      timestamp: now,
+    };
+
+    this.broadcast("chat:message", chatMessage);
+
+    chatRepo
+      .saveMessage({
+        roomCode: this.code,
+        playerId,
+        displayName: player.displayName,
+        avatarColor: player.avatarColor,
+        message,
+      })
+      .catch((err) => console.error("[GameRoom] chat save error", err));
+  }
+
+  async sendChatHistory(socket: AppSocket): Promise<void> {
+    try {
+      const rows = await chatRepo.getRecentMessages(this.code, MAX_CHAT_HISTORY);
+      const history: ChatMessage[] = rows.map((row) => ({
+        messageId: row.id,
+        playerId: row.playerId,
+        displayName: row.displayName,
+        avatarColor: row.avatarColor,
+        message: row.message,
+        censored: row.censored,
+        timestamp: row.createdAt.getTime(),
+      }));
+      socket.emit("chat:history", history);
+    } catch (err) {
+      console.error("[GameRoom] sendChatHistory error", err);
+    }
   }
 
   private nextSeat(): number {
