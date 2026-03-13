@@ -228,6 +228,13 @@ export default function Home() {
           {/* Footer actions */}
           <div className="flex items-center justify-center gap-4 self-center">
             <Link
+              to="/leaderboard"
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
+            >
+              Leaderboard
+            </Link>
+            <span className="text-gray-800 text-xs">·</span>
+            <Link
               to="/settings"
               className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
             >
