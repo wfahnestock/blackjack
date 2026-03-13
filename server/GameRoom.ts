@@ -8,6 +8,7 @@ import type {
   RoundResult,
   ChatMessage,
   RoleInfo,
+  RoomListing,
 } from "../app/lib/types.js";
 import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY, MODERATOR_ROLE_NAMES } from "../app/lib/constants.js";
 import { GameStateMachine } from "./GameStateMachine.js";
@@ -34,14 +35,19 @@ export class GameRoom {
     code: string,
     private io: AppServer,
     settings: Partial<GameSettings>,
-    flushRound?: (players: Player[], results: RoundResult[]) => Promise<void>
+    flushRound?: (players: Player[], results: RoundResult[]) => Promise<void>,
+    private onListingChanged?: () => void
   ) {
     this.code = code;
     const merged: GameSettings = { ...DEFAULT_SETTINGS, ...settings };
     this.machine = new GameStateMachine(
       code,
       merged,
-      (event, data) => this.broadcast(event, data)
+      (event, data) => {
+        this.broadcast(event, data);
+        // Phase changes affect the room listing (In Lobby ↔ In Game)
+        if (event === "state:phase-changed") onListingChanged?.();
+      }
     );
 
     if (flushRound) {
@@ -88,6 +94,7 @@ export class GameRoom {
       // Send full state to the reconnecting socket so their client has current game state
       socket.emit("state:sync", this.machine.state);
       this.broadcast("state:player-updated", this.machine.getPlayer(playerId)!);
+      this.onListingChanged?.();
       return { success: true };
     }
 
@@ -112,6 +119,7 @@ export class GameRoom {
     socket.join(this.code);
 
     this.broadcast("state:sync", this.machine.state);
+    this.onListingChanged?.();
     return { success: true };
   }
 
@@ -140,11 +148,13 @@ export class GameRoom {
       } else {
         this.machine.updatePlayer(playerId, { status: "disconnected" });
         this.broadcast("state:player-updated", this.machine.getPlayer(playerId)!);
+        this.onListingChanged?.();
         return;
       }
     }
 
     this.broadcast("state:sync", this.machine.state);
+    this.onListingChanged?.();
   }
 
   handleStart(socketId: string): void {
@@ -165,6 +175,7 @@ export class GameRoom {
 
     Object.assign(this.machine.state.settings, settings);
     this.broadcast("state:sync", this.machine.state);
+    this.onListingChanged?.();
   }
 
   handlePlaceBet(socketId: string, amount: number): void {
@@ -315,6 +326,32 @@ export class GameRoom {
   private hasModerationPrivilege(playerId: string): boolean {
     const roles = this.playerRolesCache.get(playerId) ?? [];
     return roles.some((r) => MODERATOR_ROLE_NAMES.has(r.name));
+  }
+
+  /** Returns a lightweight snapshot used by the public room browser. */
+  getListing(): RoomListing {
+    const s = this.machine.state;
+    // Only count/show players who are actually present (not mid-game departures).
+    const activePlayers = s.players.filter((p) => p.status !== "disconnected");
+    return {
+      code: this.code,
+      playerCount: activePlayers.length,
+      maxPlayers: MAX_PLAYERS,
+      phase: s.phase,
+      settings: {
+        minBet: s.settings.minBet,
+        maxBet: s.settings.maxBet,
+        bettingTimerSeconds: s.settings.bettingTimerSeconds,
+        turnTimerSeconds: s.settings.turnTimerSeconds,
+        allowCountingHint: s.settings.allowCountingHint,
+        bankruptcyProtection: s.settings.bankruptcyProtection,
+        isPrivate: s.settings.isPrivate,
+      },
+      players: activePlayers.map((p) => ({
+        displayName: p.displayName,
+        avatarColor: p.avatarColor,
+      })),
+    };
   }
 
   private broadcast(event: string, data: unknown): void {

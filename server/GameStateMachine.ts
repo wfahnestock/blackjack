@@ -133,8 +133,11 @@ export class GameStateMachine {
   startBetting(): void {
     this.clearTimer();
 
-    // Reset hands for all players
+    // Reset hands for all connected players (skip disconnected — they hold their seat
+    // but should not be given hands or have their status overwritten).
     for (const player of this.state.players) {
+      if (player.status === "disconnected") continue;
+
       player.hands = [makeHand(0)];
       player.status = "betting";
 
@@ -191,8 +194,11 @@ export class GameStateMachine {
     this.phaseChange("dealing", null, null, null);
     this.sync(); // Broadcast the "dealing" phase immediately so clients can react (e.g. sound)
 
-    // Remove players who didn't bet (or joined after betting started)
+    // Settle players who didn't bet (or joined after betting started).
+    // Disconnected players are left untouched — they hold their seat for reconnection.
     for (const player of this.state.players) {
+      if (player.status === "disconnected") continue;
+
       if (!player.hands.length || player.hands[0].bet === 0) {
         player.status = "sitting-out";
         player.hands = [];
@@ -568,7 +574,10 @@ export class GameStateMachine {
 
         results.push({ playerId: player.playerId, handId: hand.handId, result, payout });
       }
-      player.status = "waiting";
+      // Don't overwrite the status of players who left mid-round.
+      if (player.status !== "disconnected") {
+        player.status = "waiting";
+      }
       this.broadcast("state:player-updated", player);
     }
 

@@ -297,6 +297,14 @@ io.use((socket, next) => {
 
 const rooms = new Map<string, GameRoom>();
 
+/** Broadcasts the current public room list to ALL connected sockets. */
+function broadcastRoomList() {
+  const listing = [...rooms.values()]
+    .filter((r) => !r.state.settings.isPrivate)
+    .map((r) => r.getListing());
+  io.emit("rooms:updated", listing);
+}
+
 function generateRoomCode(): string {
   let code: string;
   do {
@@ -307,7 +315,8 @@ function generateRoomCode(): string {
 
 io.on("connection", (socket: AppSocket) => {
   const playerId = socket.data.playerId;
-  console.log(`[server] connected: ${socket.id} (player: ${playerId})`);
+  const playerName = socket.data.username;
+  console.log(`[server] connected: ${socket.id} (player: ${playerName}, id: ${playerId})`);
 
   socket.on("room:create", async (payload, callback) => {
     try {
@@ -327,7 +336,8 @@ io.on("connection", (socket: AppSocket) => {
             Promise.all(players.map((p) => playerRepo.updateChips(p.playerId, p.chips))),
             statsRepo.recordRoundResults(results, players),
           ]);
-        }
+        },
+        broadcastRoomList
       );
       rooms.set(code, room);
 
@@ -348,6 +358,8 @@ io.on("connection", (socket: AppSocket) => {
       }
 
       callback({ success: true, roomCode: code });
+      console.log(`[server] room created: ${code} (by player: ${playerName}, id: ${playerId})`);
+      broadcastRoomList();
       room.sendChatHistory(socket).catch(console.error);
     } catch (err) {
       console.error("[server] room:create error", err);
@@ -386,6 +398,8 @@ io.on("connection", (socket: AppSocket) => {
       }
 
       callback({ success: true, state: room.state });
+      console.log(`[server] player ${playerName} (id: ${playerId}) joined room: ${code}`);
+      broadcastRoomList();
       room.sendChatHistory(socket).catch(console.error);
     } catch (err) {
       console.error("[server] room:join error", err);
@@ -397,10 +411,12 @@ io.on("connection", (socket: AppSocket) => {
     for (const [code, room] of rooms) {
       if (socket.rooms.has(code)) {
         room.removePlayer(socket.id);
+        console.log(`[server] player ${playerName} (id: ${playerId}) left room: ${code}`);
         if (room.isEmpty) {
           room.destroy();
           rooms.delete(code);
         }
+        broadcastRoomList();
         break;
       }
     }
@@ -507,9 +523,17 @@ io.on("connection", (socket: AppSocket) => {
           room.destroy();
           rooms.delete(code);
         }
+        broadcastRoomList();
         break;
       }
     }
+  });
+
+  socket.on("rooms:subscribe", (callback) => {
+    const listing = [...rooms.values()]
+      .filter((r) => !r.state.settings.isPrivate)
+      .map((r) => r.getListing());
+    callback(listing);
   });
 });
 
