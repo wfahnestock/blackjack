@@ -199,6 +199,21 @@ app.get("/api/players/:id/profile", requireAuth, async (req: AuthedRequest, res)
   }
 });
 
+app.get("/api/leaderboard", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const stat = (req.query["stat"] as string) ?? "chips";
+    if (!["chips", "netWinnings", "handsPlayed"].includes(stat)) {
+      res.status(400).json({ error: "Invalid stat" });
+      return;
+    }
+    const entries = await playerRepo.getLeaderboard(stat as playerRepo.LeaderboardStat);
+    res.json(entries);
+  } catch (err) {
+    console.error("[leaderboard]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 app.put("/api/players/:id/settings", requireAuth, async (req: AuthedRequest, res) => {
   try {
     if (req.playerId !== req.params["id"]) {
