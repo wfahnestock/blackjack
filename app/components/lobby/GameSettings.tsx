@@ -21,6 +21,7 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
           <span>Turn timer</span><span className="text-gray-300">{settings.turnTimerSeconds}s</span>
           <span>Count hint</span><span className="text-gray-300">{settings.allowCountingHint ? "On" : "Off"}</span>
           <span>Bankruptcy protection</span><span className="text-gray-300">{settings.bankruptcyProtection ? "On" : "Off"}</span>
+          <span>Visibility</span><span className="text-gray-300">{settings.isPrivate ? "Private" : "Public"}</span>
         </div>
       </div>
     );
@@ -92,6 +93,19 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
         <div>
           <p className="text-sm text-gray-300 font-medium">Bankruptcy Protection</p>
           <p className="text-xs text-gray-600">Grants 100 chips to players who reach 0 so they can keep playing</p>
+        </div>
+      </label>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={settings.isPrivate}
+          onChange={(e) => onChange({ isPrivate: e.target.checked })}
+          className="w-4 h-4 accent-emerald-500"
+        />
+        <div>
+          <p className="text-sm text-gray-300 font-medium">Private Room</p>
+          <p className="text-xs text-gray-600">Hide this room from the public room browser</p>
         </div>
       </label>
     </div>
