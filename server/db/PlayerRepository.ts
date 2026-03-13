@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "./client.js";
 import { players, playerStats } from "./schema.js";
 import type { Player, PlayerStats } from "./schema.js";
@@ -82,6 +82,39 @@ export async function updateProfile(
   return updated;
 }
 
+
+export type LeaderboardStat = "chips" | "netWinnings" | "handsPlayed";
+
+export async function getLeaderboard(
+  stat: LeaderboardStat,
+  limit = 50
+): Promise<{ playerId: string; displayName: string; avatarColor: string; value: number }[]> {
+  if (stat === "chips") {
+    return db
+      .select({
+        playerId: players.id,
+        displayName: players.displayName,
+        avatarColor: players.avatarColor,
+        value: players.chips,
+      })
+      .from(players)
+      .orderBy(desc(players.chips))
+      .limit(limit);
+  }
+
+  const col = stat === "netWinnings" ? playerStats.netWinnings : playerStats.handsPlayed;
+  return db
+    .select({
+      playerId: players.id,
+      displayName: players.displayName,
+      avatarColor: players.avatarColor,
+      value: col,
+    })
+    .from(players)
+    .innerJoin(playerStats, eq(playerStats.playerId, players.id))
+    .orderBy(desc(col))
+    .limit(limit);
+}
 
 export async function claimDailyReward(
   playerId: string,
