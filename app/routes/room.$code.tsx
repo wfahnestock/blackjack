@@ -9,6 +9,7 @@ import { usePlayer } from "~/lib/usePlayer";
 import { useSoundEffects } from "~/lib/useSoundEffects";
 import { useChat } from "~/lib/useChat";
 import { useAuth } from "~/lib/AuthContext";
+import { clearGameState } from "~/lib/socket";
 
 export function meta() {
   return [{ title: "Blackjack — Game" }];
@@ -79,6 +80,7 @@ export default function Room() {
   }
 
   function handleLeave() {
+    clearGameState();
     socket.emit("room:leave");
     navigate("/");
   }

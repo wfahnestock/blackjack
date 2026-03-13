@@ -11,6 +11,7 @@ import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
 import { useChat } from "~/lib/useChat";
 import { useAuth } from "~/lib/AuthContext";
+import { clearGameState } from "~/lib/socket";
 import type { GameSettings } from "~/lib/types";
 
 export function meta() {
@@ -31,9 +32,8 @@ export default function Lobby() {
   const [mobileChatOpen, setMobileChatOpen] = useState(false);
 
   useEffect(() => {
-    console.log("[lobby] state/joined check — state:", !!state, "joined:", joined);
     if (!state && joined) {
-      console.log("[lobby] no state after join, redirecting home");
+      clearGameState();
       navigate("/");
     }
   }, [state, joined, navigate]);

@@ -496,10 +496,12 @@ io.on("connection", (socket: AppSocket) => {
     }
   });
 
-  socket.on("disconnect", () => {
-    console.log(`[server] disconnected: ${socket.id}`);
+  // Use "disconnecting" (not "disconnect") because socket.rooms is still populated at this point.
+  // By the time "disconnect" fires, socket.rooms has already been cleared.
+  socket.on("disconnecting", () => {
+    console.log(`[server] disconnecting: ${socket.id}`);
     for (const [code, room] of rooms) {
-      if (socket.rooms.has(code) || room.state.players.length > 0) {
+      if (socket.rooms.has(code)) {
         room.removePlayer(socket.id);
         if (room.isEmpty) {
           room.destroy();
