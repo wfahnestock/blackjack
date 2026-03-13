@@ -64,7 +64,9 @@ export class GameRoom {
   }
 
   get isEmpty(): boolean {
-    return this.playerCount === 0;
+    // True when there are no players at all, OR every remaining player is disconnected
+    // (i.e. they left mid-game). In either case nobody is actively using the room.
+    return this.machine.state.players.every((p) => p.status === "disconnected");
   }
 
   get state() {
