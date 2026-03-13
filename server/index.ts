@@ -410,7 +410,7 @@ io.on("connection", (socket: AppSocket) => {
   socket.on("room:leave", () => {
     for (const [code, room] of rooms) {
       if (socket.rooms.has(code)) {
-        room.removePlayer(socket.id);
+        room.removePlayer(socket.id, true);
         console.log(`[server] player ${playerName} (id: ${playerId}) left room: ${code}`);
         if (room.isEmpty) {
           room.destroy();

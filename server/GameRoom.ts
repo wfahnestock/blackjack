@@ -125,7 +125,7 @@ export class GameRoom {
     return { success: true };
   }
 
-  removePlayer(socketId: string): void {
+  removePlayer(socketId: string, intentional = false): void {
     const playerId = this.socketToPlayer.get(socketId);
     if (!playerId) return;
 
@@ -139,19 +139,23 @@ export class GameRoom {
 
     const player = this.machine.getPlayer(playerId);
     if (player) {
-      // If game is in lobby, remove entirely; otherwise mark disconnected
-      if (this.machine.state.phase === "lobby" || this.machine.state.phase === "cleanup") {
-        this.machine.removePlayer(playerId);
-        // Reassign host if needed
-        if (player.isHost && this.playerCount > 0) {
-          const nextHost = this.machine.state.players[0];
-          this.machine.updatePlayer(nextHost.playerId, { isHost: true });
-        }
-      } else {
+      const isActiveMidRound =
+        this.machine.state.phase !== "lobby" && this.machine.state.phase !== "cleanup";
+
+      if (!intentional && isActiveMidRound) {
+        // Unintentional disconnect mid-round: keep the player in state but mark offline
         this.machine.updatePlayer(playerId, { status: "disconnected" });
         this.broadcast("state:player-updated", this.machine.getPlayer(playerId)!);
         this.onListingChanged?.();
         return;
+      }
+
+      // Intentional leave, or leaving from lobby/cleanup: remove entirely
+      this.machine.removePlayer(playerId);
+      // Reassign host if needed
+      if (player.isHost && this.playerCount > 0) {
+        const nextHost = this.machine.state.players[0];
+        this.machine.updatePlayer(nextHost.playerId, { isHost: true });
       }
     }
 
