@@ -5,6 +5,7 @@ import type { ChatMessageRow } from "./schema.js";
 
 
 export async function saveMessage(data: {
+  id: string;
   roomCode: string;
   playerId: string;
   displayName: string;

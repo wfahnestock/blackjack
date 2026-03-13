@@ -1,4 +1,4 @@
-import { nanoid } from "nanoid";
+import { randomUUID } from "crypto";
 import type { Server, Socket } from "socket.io";
 import type {
   Player,
@@ -85,6 +85,8 @@ export class GameRoom {
       this.playerRolesCache.set(playerId, roles);
       socket.join(this.code);
       this.machine.updatePlayer(playerId, { status: "connected", displayName });
+      // Send full state to the reconnecting socket so their client has current game state
+      socket.emit("state:sync", this.machine.state);
       this.broadcast("state:player-updated", this.machine.getPlayer(playerId)!);
       return { success: true };
     }
@@ -116,6 +118,10 @@ export class GameRoom {
   removePlayer(socketId: string): void {
     const playerId = this.socketToPlayer.get(socketId);
     if (!playerId) return;
+
+    // Leave the socket.io room so the socket stops receiving room broadcasts
+    const socket = this.io.sockets.sockets.get(socketId);
+    socket?.leave(this.code);
 
     this.socketToPlayer.delete(socketId);
     this.playerToSocket.delete(playerId);
@@ -223,8 +229,9 @@ export class GameRoom {
 
     this.chatRateLimits.set(playerId, { lastAt: now, lastContent: message });
 
+    const messageId = randomUUID();
     const chatMessage: ChatMessage = {
-      messageId: nanoid(),
+      messageId,
       playerId,
       displayName: player.displayName,
       avatarColor: player.avatarColor,
@@ -238,6 +245,7 @@ export class GameRoom {
 
     chatRepo
       .saveMessage({
+        id: messageId,
         roomCode: this.code,
         playerId,
         displayName: player.displayName,
