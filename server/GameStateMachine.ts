@@ -105,6 +105,7 @@ export class GameStateMachine {
     this.state.phaseEndsAt = phaseEndsAt;
     this.state.activePlayerId = activePlayerId;
     this.state.activeHandId = activeHandId;
+    this.broadcast("state:phase-changed", { phase });
   }
 
   // ─── Player Management ──────────────────────────────────────────────────────
