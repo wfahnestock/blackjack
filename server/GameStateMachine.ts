@@ -555,11 +555,11 @@ export class GameStateMachine {
           result = "blackjack";
           // Round BJ bonus to the nearest 5-chip denomination to avoid non-integer chip totals.
           // e.g. bet=5 → floor(7.5)=7 (wrong) → round(7.5/5)*5=10 (correct multiple of 5).
-          const bjBonus = Math.round((hand.bet * BLACKJACK_PAYOUT) / 5) * 5;
-          payout += hand.bet + bjBonus;
+          //const bjBonus = Math.round((hand.bet * BLACKJACK_PAYOUT) / 5) * 5;
+          payout += hand.bet * (1 + BLACKJACK_PAYOUT);
         } else {
           const playerValue = getBestValue(hand.cards);
-          if (playerValue > dealerValue || dealerValue > 21 || playerValue === 21) {
+          if (playerValue > dealerValue || dealerValue > 21) {
             result = "win";
             payout += hand.bet * 2;
           } else if (playerValue === dealerValue) {
