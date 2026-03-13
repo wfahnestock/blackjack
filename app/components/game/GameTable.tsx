@@ -98,7 +98,8 @@ export function GameTable({
       )}
 
       {/* Top bar: shoe info + phase */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-2">
+      <div className="grid grid-cols-3 items-center px-6 pt-4 pb-2">
+        {/* Left */}
         <div className="flex items-center gap-3">
           {onLeave && (
             <button
@@ -118,7 +119,8 @@ export function GameTable({
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        {/* Center — always truly centered regardless of timer presence */}
+        <div className="flex items-center justify-center gap-4">
           <PhaseLabel phase={state.phase} />
           {state.phaseEndsAt && (
             <Countdown
@@ -132,7 +134,8 @@ export function GameTable({
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Right */}
+        <div className="flex items-center justify-end gap-3">
           {onChatToggle && (
             <button
               onClick={onChatToggle}
