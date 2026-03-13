@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "~/components/ui/Button";
 import { CHIP_DENOMINATIONS, CHIP_COLORS } from "~/lib/constants";
 import type { ChipDenomination } from "~/lib/constants";
@@ -20,6 +20,10 @@ export function BettingControls({
   onBet,
 }: BettingControlsProps) {
   const [pendingBet, setPendingBet] = useState(currentBet);
+
+  useEffect(() => {
+    setPendingBet(currentBet);
+  }, [currentBet]);
 
   const addChip = (denom: ChipDenomination) => {
     const next = Math.min(settings.maxBet, pendingBet + denom);
