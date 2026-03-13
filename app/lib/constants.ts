@@ -64,6 +64,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   bankruptcyProtection: true,
   minBet: 5,
   maxBet: 10000,
+  isPrivate: false,
 };
 
 export const MAX_CHAT_MESSAGE_LENGTH = 200;

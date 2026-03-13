@@ -4,6 +4,7 @@ import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/Button";
 import { Input } from "~/components/ui/Input";
 import { ProfileModal } from "~/components/ui/ProfileModal";
+import { RoomBrowser } from "~/components/home/RoomBrowser";
 import { useAuth } from "~/lib/AuthContext";
 import { useSocket } from "~/lib/useSocket";
 
@@ -36,6 +37,7 @@ export default function Home() {
   const [claimLoading, setClaimLoading] = useState(false);
   const [error, setError] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [joiningCode, setJoiningCode] = useState<string | null>(null);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -79,23 +81,30 @@ export default function Home() {
     );
   };
 
-  const handleJoin = () => {
-    if (!joinCode.trim() || loading) return;
-    setLoading(true);
+  /** Shared join logic — used by both the manual code form and the room browser cards. */
+  const handleJoinRoom = (code: string) => {
+    if (loading || joiningCode) return;
+    const upper = code.trim().toUpperCase();
+    setJoiningCode(upper);
     setError("");
 
     socket.emit(
       "room:join",
-      { roomCode: joinCode.trim().toUpperCase() },
+      { roomCode: upper },
       (res) => {
-        setLoading(false);
+        setJoiningCode(null);
         if (res.success) {
-          navigate(`/lobby/${joinCode.trim().toUpperCase()}`);
+          navigate(`/lobby/${upper}`);
         } else {
           setError(res.error ?? "Failed to join room");
         }
       }
     );
+  };
+
+  const handleJoin = () => {
+    if (!joinCode.trim() || joiningCode) return;
+    handleJoinRoom(joinCode);
   };
 
   return (
@@ -104,8 +113,10 @@ export default function Home() {
       playerId={profileOpen ? user.playerId : null}
       onClose={() => setProfileOpen(false)}
     />
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-md flex flex-col gap-8">
+    <div className="min-h-screen px-4 py-12">
+      <div className="w-full max-w-5xl mx-auto flex flex-col gap-10">
+      {/* Player card — centred, fixed width */}
+      <div className="w-full max-w-md mx-auto flex flex-col gap-8">
         {/* Header */}
         <div className="text-center">
           <div className="text-6xl mb-3 select-none">♠</div>
@@ -202,9 +213,9 @@ export default function Home() {
                 variant="primary"
                 size="lg"
                 onClick={handleJoin}
-                disabled={loading || joinCode.length < 6}
+                disabled={!!joiningCode || joinCode.length < 6}
               >
-                {loading ? "Joining..." : "Join Room"}
+                {joiningCode ? "Joining..." : "Join Room"}
               </Button>
               <Button variant="ghost" size="md" onClick={() => setMode("none")}>
                 Back
@@ -231,6 +242,11 @@ export default function Home() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Room browser */}
+      <RoomBrowser onJoin={handleJoinRoom} joiningCode={joiningCode} />
+
       </div>
     </div>
     </>

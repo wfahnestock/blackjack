@@ -77,6 +77,8 @@ export interface GameSettings {
   bankruptcyProtection: boolean;
   minBet: number;
   maxBet: number;
+  /** When true, this room is hidden from public room discovery. */
+  isPrivate: boolean;
 }
 
 // ─── Game Phase ───────────────────────────────────────────────────────────────
@@ -124,6 +126,7 @@ export interface ChatMessage {
   avatarColor: string;
   message: string;
   /** True when a moderator has removed this message. */
+  /** TODO: this isn't the correct field for this, but works for now */
   censored: boolean;
   timestamp: number; // epoch ms
   /** Roles held by the sender at the time the message was sent. */
@@ -139,6 +142,28 @@ export interface RoundResult {
   handId: string;
   result: HandResult;
   payout: number;
+}
+
+// ─── Room Discovery ───────────────────────────────────────────────────────────
+
+/** Snapshot of a room as shown in the public room browser. */
+export interface RoomListing {
+  code: string;
+  playerCount: number;
+  maxPlayers: number;
+  phase: GamePhase;
+  settings: Pick<
+    GameSettings,
+    | "minBet"
+    | "maxBet"
+    | "bettingTimerSeconds"
+    | "turnTimerSeconds"
+    | "allowCountingHint"
+    | "bankruptcyProtection"
+    | "isPrivate"
+  >;
+  /** Connected (non-disconnected) players, for avatar display. */
+  players: Array<{ displayName: string; avatarColor: string }>;
 }
 
 // ─── Callback Response Types ──────────────────────────────────────────────────
@@ -186,6 +211,9 @@ export interface ClientToServerEvents {
 
   "chat:remove_message": (payload: { messageId: string }) => void;
   "chat:clear": () => void;
+
+  /** Request the current public room list (initial fetch). Server replies via callback. */
+  "rooms:subscribe": (callback: (rooms: RoomListing[]) => void) => void;
 }
 
 // ─── Socket Events: Server → Client ──────────────────────────────────────────
@@ -227,4 +255,7 @@ export interface ServerToClientEvents {
 
   "chat:message_removed": (payload: { messageId: string }) => void;
   "chat:cleared": (payload: { clearedBy: string }) => void;
+
+  /** Server pushes an updated public room list whenever a room's discoverable state changes. */
+  "rooms:updated": (rooms: RoomListing[]) => void;
 }
