@@ -39,6 +39,38 @@ function makeHand(bet = 0): Hand {
   };
 }
 
+type HandResolution = { result: HandResult; payoutMultiplier: number };
+
+/**
+ * Determines the outcome and payout multiplier for a single hand.
+ * Multiplier is applied to hand.bet; the caller adds it to chips.
+ * Insurance is handled separately before calling this.
+ */
+function resolveHandResult(
+  hand: Hand,
+  playerBJ: boolean,
+  dealerBJ: boolean,
+  dealerValue: number
+): HandResolution {
+  const playerValue = getBestValue(hand.cards);
+
+  // Each entry is [condition, result, payoutMultiplier].
+  // The first matching row wins (order matters).
+  const table: [boolean, HandResult, number][] = [
+    [hand.busted,                                    "bust",      0],                  // player busted → lost bet
+    [playerBJ && dealerBJ,                           "push",      1],                  // both naturals → push
+    [dealerBJ,                                       "lose",      0],                  // dealer natural beats all else
+    [playerBJ,                                       "blackjack", 1 + BLACKJACK_PAYOUT], // player natural → 3:2
+    [playerValue > dealerValue || dealerValue > 21,  "win",       2],                  // player wins
+    [playerValue === dealerValue,                    "push",      1],                  // tie → refund
+    [true,                                           "lose",      0],                  // fallthrough → player loses
+  ];
+
+  // The final [true, ...] row guarantees a match always exists.
+  const [, result, payoutMultiplier] = table.find(([cond]) => cond)!;
+  return { result, payoutMultiplier };
+}
+
 export type BroadcastFn = (event: string, data: unknown) => void;
 export type EmitToFn = (socketId: string, event: string, data: unknown) => void;
 
@@ -528,7 +560,6 @@ export class GameStateMachine {
 
     for (const player of this.state.players) {
       for (const hand of player.hands) {
-        let result: HandResult;
         let payout = 0;
 
         // Insurance resolution
@@ -539,36 +570,9 @@ export class GameStateMachine {
           // Insurance bet already deducted; no refund if dealer doesn't have BJ
         }
 
-        if (hand.busted) {
-          result = "bust";
-          payout -= 0; // already lost bet
-        } else if (dealerBJ && isBlackjack(hand)) {
-          // Natural blackjack vs natural blackjack → push
-          result = "push";
-          payout += hand.bet; // refund
-        } else if (dealerBJ) {
-          // Dealer blackjack beats everything else (including player 21 with 3+ cards)
-          result = "lose";
-          // bet already gone
-        } else if (isBlackjack(hand)) {
-          // Player natural blackjack beats dealer 21 made with 3+ cards → 3:2 payout
-          result = "blackjack";
-          // Round BJ bonus to the nearest 5-chip denomination to avoid non-integer chip totals.
-          // e.g. bet=5 → floor(7.5)=7 (wrong) → round(7.5/5)*5=10 (correct multiple of 5).
-          //const bjBonus = Math.round((hand.bet * BLACKJACK_PAYOUT) / 5) * 5;
-          payout += hand.bet * (1 + BLACKJACK_PAYOUT);
-        } else {
-          const playerValue = getBestValue(hand.cards);
-          if (playerValue > dealerValue || dealerValue > 21) {
-            result = "win";
-            payout += hand.bet * 2;
-          } else if (playerValue === dealerValue) {
-            result = "push";
-            payout += hand.bet; // refund
-          } else {
-            result = "lose";
-          }
-        }
+        const playerBJ = isBlackjack(hand);
+        const { result, payoutMultiplier } = resolveHandResult(hand, playerBJ, dealerBJ, dealerValue);
+        payout += hand.bet * payoutMultiplier;
 
         hand.result = result;
         player.chips += payout;
