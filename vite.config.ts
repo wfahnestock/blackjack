@@ -12,6 +12,11 @@ export default defineConfig({
         ws: true,
         changeOrigin: true,
       },
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
     },
+    allowedHosts: ["esperanza-counteractive-marjory.ngrok-free.dev"],
   },
 });
