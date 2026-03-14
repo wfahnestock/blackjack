@@ -113,14 +113,49 @@ export default function Home() {
       playerId={profileOpen ? user.playerId : null}
       onClose={() => setProfileOpen(false)}
     />
+
+    {/* Top nav bar */}
+    <nav className="sticky top-0 z-30 bg-gray-950/90 backdrop-blur border-b border-gray-800">
+      <div className="w-full max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+        {/* Logo */}
+        <div className="flex items-center gap-2 select-none">
+          <span className="text-white text-xl">♠</span>
+          <span className="font-black text-white tracking-tight">Blackjack</span>
+        </div>
+
+        {/* Nav links */}
+        <div className="flex items-center gap-1">
+          <Link
+            to="/leaderboard"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+          >
+            <span>🏆</span>
+            <span className="hidden sm:inline">Leaderboard</span>
+          </Link>
+          <Link
+            to="/settings"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
+          >
+            <span>⚙️</span>
+            <span className="hidden sm:inline">Settings</span>
+          </Link>
+          <button
+            onClick={logout}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"
+          >
+            <span>→</span>
+            <span className="hidden sm:inline">Sign out</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
     <div className="min-h-screen px-4 py-12">
       <div className="w-full max-w-5xl mx-auto flex flex-col gap-10">
       {/* Player card — centred, fixed width */}
       <div className="w-full max-w-md mx-auto flex flex-col gap-8">
         {/* Header */}
         <div className="text-center">
-          <div className="text-6xl mb-3 select-none">♠</div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Blackjack</h1>
           <p className="text-gray-500 mt-2">Multiplayer · 6-deck shoe</p>
         </div>
 
@@ -224,30 +259,6 @@ export default function Home() {
           )}
 
           {error && <p className="text-sm text-red-400 text-center">{error}</p>}
-
-          {/* Footer actions */}
-          <div className="flex items-center justify-center gap-4 self-center">
-            <Link
-              to="/leaderboard"
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-            >
-              Leaderboard
-            </Link>
-            <span className="text-gray-800 text-xs">·</span>
-            <Link
-              to="/settings"
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-            >
-              Account Settings
-            </Link>
-            <span className="text-gray-800 text-xs">·</span>
-            <button
-              onClick={logout}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-            >
-              Sign out
-            </button>
-          </div>
         </div>
       </div>
 
