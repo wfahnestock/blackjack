@@ -81,6 +81,7 @@ export class GameStateMachine {
 
   state: GameState;
   onRoundEnd?: (players: Player[], results: RoundResult[]) => void;
+  onEvictDisconnected?: (evicted: Player[]) => void;
 
   constructor(
     roomCode: string,
@@ -166,10 +167,16 @@ export class GameStateMachine {
   startBetting(): void {
     this.clearTimer();
 
-    // Reset hands for all connected players (skip disconnected — they hold their seat
-    // but should not be given hands or have their status overwritten).
+    // Evict players who were still disconnected when the new round begins.
+    // They had until now to reconnect; if they didn't, remove them from the table.
+    const evicted = this.state.players.filter((p) => p.status === "disconnected");
+    if (evicted.length > 0) {
+      this.state.players = this.state.players.filter((p) => p.status !== "disconnected");
+      this.onEvictDisconnected?.(evicted);
+    }
+
+    // Reset hands for all connected players.
     for (const player of this.state.players) {
-      if (player.status === "disconnected") continue;
 
       player.hands = [makeHand(0)];
       player.status = "betting";
@@ -184,8 +191,15 @@ export class GameStateMachine {
     this.state.roundNumber++;
 
     const endsAt = Date.now() + this.state.settings.bettingTimerSeconds * 1000;
-    this.phaseChange("betting", endsAt, null, null);
+    // Set all state fields before syncing so the single state:sync the client receives is
+    // already fully consistent: evicted players gone, statuses reset, phase correct.
+    // phaseChange() then broadcasts state:phase-changed for sound cues / phase-specific effects.
+    this.state.phase = "betting";
+    this.state.phaseEndsAt = endsAt;
+    this.state.activePlayerId = null;
+    this.state.activeHandId = null;
     this.sync();
+    this.broadcast("state:phase-changed", { phase: "betting" });
 
     this.timer = setTimeout(() => {
       this.startDealing();
@@ -342,6 +356,7 @@ export class GameStateMachine {
 
   private findNextActiveHand(): { player: Player; handIdx: number } | { player: null; handIdx: -1 } {
     for (const player of this.state.players) {
+      if (player.status === "disconnected") continue; // never give a disconnected player a turn
       if (player.hands.length === 0) continue;
       for (let i = 0; i < player.hands.length; i++) {
         const hand = player.hands[i];
@@ -353,12 +368,29 @@ export class GameStateMachine {
     return { player: null, handIdx: -1 };
   }
 
+  /** Called when a player disconnects while it is their turn. Immediately stands their
+   *  active hand and advances rather than waiting for the turn timer to expire. */
+  skipDisconnectedTurn(playerId: string): void {
+    if (this.state.phase !== "player-turn") return;
+    if (this.state.activePlayerId !== playerId) return;
+
+    this.clearTimer();
+    const player = this.getPlayer(playerId);
+    if (!player) return;
+    const hand = player.hands.find((h) => h.handId === this.state.activeHandId);
+    if (hand && !hand.stood && !hand.busted) {
+      hand.stood = true;
+      this.broadcast("state:hand-updated", { playerId, hand });
+    }
+    this.advanceTurn();
+  }
+
   private advanceTurn(): void {
     this.clearTimer();
-    // Mark active player as waiting if all hands done
+    // Mark active player as waiting if all hands done — but never overwrite "disconnected".
     if (this.state.activePlayerId) {
       const player = this.getPlayer(this.state.activePlayerId);
-      if (player && player.hands.every((h) => h.stood || h.busted)) {
+      if (player && player.status !== "disconnected" && player.hands.every((h) => h.stood || h.busted)) {
         player.status = "waiting";
       }
     }
@@ -572,7 +604,7 @@ export class GameStateMachine {
 
         const playerBJ = isBlackjack(hand);
         const { result, payoutMultiplier } = resolveHandResult(hand, playerBJ, dealerBJ, dealerValue);
-        payout += hand.bet * payoutMultiplier;
+        payout += Math.floor(hand.bet * payoutMultiplier);
 
         hand.result = result;
         player.chips += payout;

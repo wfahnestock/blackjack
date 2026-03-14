@@ -57,6 +57,17 @@ export class GameRoom {
         );
       };
     }
+
+    this.machine.onEvictDisconnected = (evicted) => {
+      // playerRolesCache was already cleared in removePlayer() on disconnect.
+      // onListingChanged fires automatically via state:phase-changed in phaseChange("betting").
+      // Only thing needed here: reassign host if it was one of the evicted players.
+      const anyHostEvicted = evicted.some((p) => p.isHost);
+      if (anyHostEvicted && this.machine.state.players.length > 0) {
+        const nextHost = this.machine.state.players[0];
+        this.machine.updatePlayer(nextHost.playerId, { isHost: true });
+      }
+    };
   }
 
   get playerCount(): number {
@@ -146,6 +157,9 @@ export class GameRoom {
         // Unintentional disconnect mid-round: keep the player in state but mark offline
         this.machine.updatePlayer(playerId, { status: "disconnected" });
         this.broadcast("state:player-updated", this.machine.getPlayer(playerId)!);
+        // If it was this player's turn, immediately stand and advance — don't make
+        // other players wait the full turn timer for someone who isn't there.
+        this.machine.skipDisconnectedTurn(playerId);
         this.onListingChanged?.();
         return;
       }
