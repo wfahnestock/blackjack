@@ -160,29 +160,27 @@ export default function Leaderboard() {
               return (
                 <div
                   key={entry.playerId}
-                  className={`flex items-center px-6 gap-4 ${styles.row} ${
+                  className={`grid grid-cols-[2rem_2rem_1fr_8rem] items-center px-6 gap-4 ${styles.row} ${
                     i < entries.length - 1 ? "border-b border-gray-800/60" : ""
                   } ${isTop3 ? "bg-gray-800/20" : ""}`}
                 >
-                  {/* Rank — left */}
-                  <span className={`${styles.rank} w-8 shrink-0 text-left`}>
+                  {/* Rank — fixed width */}
+                  <span className={`${styles.rank} text-left`}>
                     {rank}
                   </span>
 
-                  {/* Trophy + player name — centered */}
-                  <div className="flex-1 flex items-center justify-center gap-2">
-                    {isTop3 && (
-                      <span className={rank === 1 ? "text-2xl" : rank === 2 ? "text-xl" : "text-lg"}>
-                        <TrophyIcon rank={rank} />
-                      </span>
-                    )}
-                    <span className={`${styles.text} text-white truncate`}>
-                      {entry.displayName}
-                    </span>
-                  </div>
+                  {/* Trophy — fixed width, empty for rank 4+ */}
+                  <span className={`text-center ${rank === 1 ? "text-2xl" : rank === 2 ? "text-xl" : "text-lg"}`}>
+                    {isTop3 && <TrophyIcon rank={rank} />}
+                  </span>
 
-                  {/* Value — right */}
-                  <span className={`${styles.value} ${valueColor} shrink-0 text-right tabular-nums`}>
+                  {/* Player name — always the same column, always centered */}
+                  <span className={`${styles.text} text-white truncate text-center`}>
+                    {entry.displayName}
+                  </span>
+
+                  {/* Value — fixed width */}
+                  <span className={`${styles.value} ${valueColor} text-right tabular-nums`}>
                     {currentStat.format(entry.value)}
                   </span>
                 </div>
