@@ -36,7 +36,7 @@ export default function Settings() {
         return;
       }
       if (newPassword.length < 8) {
-        setError("New password must be at least 8 characters");
+        setError("New password must be at least 12 characters");
         return;
       }
     }
@@ -182,7 +182,7 @@ export default function Settings() {
                 setSuccess(false);
                 setError("");
               }}
-              placeholder="At least 8 characters"
+              placeholder="At least 12 characters"
               autoComplete="new-password"
             />
             <Input

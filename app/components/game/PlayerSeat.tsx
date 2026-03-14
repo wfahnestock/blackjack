@@ -231,9 +231,11 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPl
       >
         <div className="relative">
           <div
-            className="w-7 h-7 rounded-full flex-shrink-0 ring-2 ring-gray-700"
+            className="w-7 h-7 rounded-full flex-shrink-0 ring-2 ring-gray-700 flex items-center justify-center text-white font-bold text-xs"
             style={{ backgroundColor: player.avatarColor }}
-          />
+          >
+            {player.displayName.charAt(0).toUpperCase()}
+          </div>
           {onPlayerClick && (
             <div className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
               <div className="w-3.5 h-3.5 rounded-full bg-gray-900 border border-gray-600 flex items-center justify-center">

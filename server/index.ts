@@ -240,7 +240,7 @@ app.put("/api/players/:id/settings", requireAuth, async (req: AuthedRequest, res
         return;
       }
       if (newPassword.length < 8) {
-        res.status(400).json({ error: "New password must be at least 8 characters" });
+        res.status(400).json({ error: "New password must be at least 12 characters" });
         return;
       }
       const player = await playerRepo.findById(req.playerId!);
