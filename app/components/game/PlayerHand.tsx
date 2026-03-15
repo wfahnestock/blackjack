@@ -46,7 +46,7 @@ export function PlayerHand({ hand, isActive, small = false }: PlayerHandProps) {
       {/* Score */}
       {score && (
         <span
-          className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+          className={`text-sm font-bold px-2 py-0.5 rounded-full ${
             isBust
               ? "bg-red-950 text-red-400"
               : hand.fiveCardCharlie
