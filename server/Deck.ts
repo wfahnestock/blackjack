@@ -46,7 +46,7 @@ export class Deck {
   }
 
   get penetration(): number {
-    return this.dealtCount / SHOE_SIZE;
+    return 1 - this.cards.length / SHOE_SIZE;
   }
 
   get needsShuffle(): boolean {

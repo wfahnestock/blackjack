@@ -33,6 +33,7 @@ function makeHand(bet = 0): Hand {
     doubled: false,
     stood: false,
     busted: false,
+    fiveCardCharlie: false,
     result: null,
     insuranceBet: 0,
     splitFromHandId: null,
@@ -57,13 +58,14 @@ function resolveHandResult(
   // Each entry is [condition, result, payoutMultiplier].
   // The first matching row wins (order matters).
   const table: [boolean, HandResult, number][] = [
-    [hand.busted,                                    "bust",      0],                  // player busted → lost bet
-    [playerBJ && dealerBJ,                           "push",      1],                  // both naturals → push
-    [dealerBJ,                                       "lose",      0],                  // dealer natural beats all else
-    [playerBJ,                                       "blackjack", 1 + BLACKJACK_PAYOUT], // player natural → 3:2
-    [playerValue > dealerValue || dealerValue > 21,  "win",       2],                  // player wins
-    [playerValue === dealerValue,                    "push",      1],                  // tie → refund
-    [true,                                           "lose",      0],                  // fallthrough → player loses
+    [hand.busted,                                    "bust",             0],                  // player busted → lost bet
+    [playerBJ && dealerBJ,                           "push",             1],                  // both naturals → push
+    [dealerBJ,                                       "lose",             0],                  // dealer natural beats all else (including 5CC)
+    [hand.fiveCardCharlie,                           "five-card-charlie", 2],                 // 5-card charlie wins (already past dealer BJ check)
+    [playerBJ,                                       "blackjack",        1 + BLACKJACK_PAYOUT], // player natural → 3:2
+    [playerValue > dealerValue || dealerValue > 21,  "win",              2],                  // player wins
+    [playerValue === dealerValue,                    "push",             1],                  // tie → refund
+    [true,                                           "lose",             0],                  // fallthrough → player loses
   ];
 
   // The final [true, ...] row guarantees a match always exists.
@@ -420,6 +422,12 @@ export class GameStateMachine {
       this.advanceTurn();
     } else if (getBestValue(hand.cards) === 21) {
       // Auto-stand on 21
+      hand.stood = true;
+      this.broadcast("state:hand-updated", { playerId, hand });
+      this.advanceTurn();
+    } else if (this.state.settings.fiveCardCharlie && hand.cards.length >= 5) {
+      // 5-card charlie: 5 cards without busting → automatic win
+      hand.fiveCardCharlie = true;
       hand.stood = true;
       this.broadcast("state:hand-updated", { playerId, hand });
       this.advanceTurn();
