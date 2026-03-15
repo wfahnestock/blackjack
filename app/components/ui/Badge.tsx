@@ -12,6 +12,7 @@ const STATUS_CONFIG: Record<PlayerStatus, { label: string; classes: string }> = 
 const RESULT_CONFIG: Record<NonNullable<HandResult>, { label: string; classes: string }> = {
   win: { label: "WIN", classes: "bg-emerald-600 text-white border-emerald-500" },
   blackjack: { label: "BLACKJACK!", classes: "bg-yellow-500 text-black border-yellow-400 font-black" },
+  "five-card-charlie": { label: "5-CARD CHARLIE!", classes: "bg-purple-500 text-white border-purple-400 font-black" },
   lose: { label: "LOSE", classes: "bg-red-800 text-white border-red-700" },
   bust: { label: "BUST", classes: "bg-red-950 text-red-400 border-red-800" },
   push: { label: "PUSH", classes: "bg-gray-700 text-gray-300 border-gray-600" },

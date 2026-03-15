@@ -62,6 +62,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   turnTimerSeconds: 45,
   allowCountingHint: false,
   bankruptcyProtection: true,
+  fiveCardCharlie: true,
   minBet: 5,
   maxBet: 10000,
   isPrivate: false,

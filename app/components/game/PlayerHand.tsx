@@ -49,12 +49,21 @@ export function PlayerHand({ hand, isActive, small = false }: PlayerHandProps) {
           className={`text-xs font-bold px-2 py-0.5 rounded-full ${
             isBust
               ? "bg-red-950 text-red-400"
+              : hand.fiveCardCharlie
+              ? "bg-purple-900 text-purple-300"
               : best === 21
               ? "bg-yellow-900 text-yellow-400"
               : "bg-gray-800 text-gray-300"
           }`}
         >
           {score}
+        </span>
+      )}
+
+      {/* 5-Card Charlie indicator (shown while waiting for payout) */}
+      {hand.fiveCardCharlie && !hand.result && (
+        <span className="text-xs font-black px-2 py-0.5 rounded-full bg-purple-900 text-purple-300 border border-purple-700">
+          5-Card Charlie!
         </span>
       )}
 

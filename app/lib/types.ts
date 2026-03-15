@@ -31,7 +31,7 @@ export interface Card {
 
 // ─── Hand ─────────────────────────────────────────────────────────────────────
 
-export type HandResult = "win" | "lose" | "push" | "blackjack" | "bust" | null;
+export type HandResult = "win" | "lose" | "push" | "blackjack" | "bust" | "five-card-charlie" | null;
 
 export interface Hand {
   handId: string;
@@ -40,6 +40,7 @@ export interface Hand {
   doubled: boolean;
   stood: boolean;
   busted: boolean;
+  fiveCardCharlie: boolean;
   result: HandResult;
   insuranceBet: number;
   splitFromHandId: string | null;
@@ -77,6 +78,7 @@ export interface GameSettings {
   turnTimerSeconds: number;
   allowCountingHint: boolean;
   bankruptcyProtection: boolean;
+  fiveCardCharlie: boolean;
   minBet: number;
   maxBet: number;
   /** When true, this room is hidden from public room discovery. */

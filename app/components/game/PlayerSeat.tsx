@@ -15,11 +15,12 @@ interface PayoutFloater {
 }
 
 const PAYOUT_COLORS: Record<NonNullable<RoundResult["result"]>, string> = {
-  win:       "text-emerald-400",
-  blackjack: "text-yellow-400",
-  push:      "text-gray-400",
-  lose:      "text-red-400",
-  bust:      "text-red-500",
+  win:                "text-emerald-400",
+  blackjack:          "text-yellow-400",
+  "five-card-charlie": "text-purple-400",
+  push:               "text-gray-400",
+  lose:               "text-red-400",
+  bust:               "text-red-500",
 };
 
 function formatNet(net: number, result: PayoutFloater["result"]): string {

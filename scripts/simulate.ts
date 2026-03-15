@@ -99,6 +99,7 @@ function makeHand(bet = 0, splitFrom: string | null = null): Hand {
     doubled: false,
     stood: false,
     busted: false,
+    fiveCardCharlie: false,
     result: null,
     insuranceBet: 0,
     splitFromHandId: splitFrom,

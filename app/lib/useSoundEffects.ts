@@ -11,7 +11,8 @@ type SoundKey =
   | "player_hit"
   | "player_stand"
   | "player_bust"
-  | "player_double_down";
+  | "player_double_down"
+  | "player_5card";
 
 const SOUND_SRCS: Record<SoundKey, string> = {
   card_draw:          "/sounds/card_draw.mp3",
@@ -23,6 +24,7 @@ const SOUND_SRCS: Record<SoundKey, string> = {
   player_stand:       "/sounds/player_stand.mp3",
   player_bust:        "/sounds/player_bust.mp3",
   player_double_down: "/sounds/player_double_down.mp3",
+  player_5card:       "/sounds/player_5card.mp3",
 };
 
 // Per-hand tracking so we can tell what changed between updates.
@@ -43,6 +45,7 @@ export function useSoundEffects(state: GameState | null, selfPlayerId: string | 
     player_stand:       null,
     player_bust:        null,
     player_double_down: null,
+    player_5card:       null,
   });
 
   const prevPhase      = useRef<GameState["phase"] | null>(null);
@@ -103,6 +106,8 @@ export function useSoundEffects(state: GameState | null, selfPlayerId: string | 
       if (cardAdded) {
         if (hand.doubled) {
           play("player_double_down");
+        } else if (hand.fiveCardCharlie) {
+          play("player_5card");
         } else if (hand.busted && playerId === selfPlayerIdRef.current) {
           // Bust sound only for the local player so it doesn't overlap across seats.
           play("player_bust");
