@@ -64,6 +64,8 @@ export interface Player {
   status: PlayerStatus;
   isHost: boolean;
   avatarColor: string;
+  /** Equipped vanity name-effect key, or null for default white text. */
+  nameEffect: string | null;
 }
 
 // ─── Game Settings ─────────────────────────────────────────────────────────────
@@ -131,6 +133,8 @@ export interface ChatMessage {
   timestamp: number; // epoch ms
   /** Roles held by the sender at the time the message was sent. */
   roles: RoleInfo[];
+  /** Vanity name-effect key of the sender at send time. */
+  nameEffect?: string | null;
   /** If true, rendered as a centered system notice (not a chat bubble). */
   isSystem?: boolean;
 }

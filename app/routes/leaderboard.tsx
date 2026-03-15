@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Navigate, Link } from "react-router";
 import type { Route } from "./+types/home";
 import { useAuth } from "~/lib/AuthContext";
+import { DisplayName } from "~/components/ui/DisplayName";
 
 export function meta({}: Route.MetaArgs) {
   return [{ title: "Leaderboard · Blackjack" }];
@@ -13,6 +14,7 @@ type LeaderboardEntry = {
   playerId: string;
   displayName: string;
   avatarColor: string;
+  nameEffect: string | null;
   value: number;
 };
 
@@ -175,9 +177,11 @@ export default function Leaderboard() {
                   </span>
 
                   {/* Player name — always the same column, always centered */}
-                  <span className={`${styles.text} text-white truncate text-center`}>
-                    {entry.displayName}
-                  </span>
+                  <DisplayName
+                    displayName={entry.displayName}
+                    nameEffect={entry.nameEffect}
+                    className={`${styles.text} truncate text-center`}
+                  />
 
                   {/* Value — fixed width */}
                   <span className={`${styles.value} ${valueColor} text-right tabular-nums`}>

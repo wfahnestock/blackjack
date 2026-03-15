@@ -76,6 +76,12 @@ export const MAX_CHAT_HISTORY = 50;
  */
 export const MODERATOR_ROLE_NAMES = new Set(["moderator", "staff"]);
 
+/**
+ * Role names that receive the exclusive developer glitch name effect.
+ * This effect cannot be purchased — it is applied automatically based on role.
+ */
+export const DEVELOPER_ROLE_NAMES = new Set(["developer"]);
+
 export const MAX_SPLITS = 3;
 export const MAX_PLAYERS = 6;
 export const ROOM_CODE_LENGTH = 6;

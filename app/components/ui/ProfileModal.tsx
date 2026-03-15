@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
+import { DisplayName } from "./DisplayName";
 import { useAuth } from "~/lib/AuthContext";
 import { formatChips } from "~/lib/handUtils";
 import type { RoleInfo } from "~/lib/types";
@@ -9,6 +10,7 @@ interface PlayerProfile {
   username: string;
   displayName: string;
   avatarColor: string;
+  nameEffect: string | null;
   chips: number;
   roles: RoleInfo[];
   stats: {
@@ -51,7 +53,7 @@ export function ProfileModal({ playerId, onClose }: ProfileModalProps) {
         if (!res.ok) throw new Error("Player not found");
         return res.json() as Promise<PlayerProfile>;
       })
-      .then((data) => setProfile(data))
+      .then((data: any) => setProfile({ ...data, nameEffect: data.equippedNameEffect ?? null }))
       .catch((err: Error) => setError(err.message))
       .finally(() => setLoading(false));
   }, [playerId, token]);
@@ -84,9 +86,12 @@ export function ProfileModal({ playerId, onClose }: ProfileModalProps) {
               {profile.displayName.charAt(0).toUpperCase()}
             </div>
             <div>
-              <p className="font-bold text-white text-lg leading-tight">
-                {profile.displayName}
-              </p>
+              <DisplayName
+                displayName={profile.displayName}
+                nameEffect={profile.nameEffect}
+                roles={profile.roles}
+                className="font-bold text-lg leading-tight"
+              />
               <p className="text-sm text-gray-500">@{profile.username}</p>
               {profile.roles.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">

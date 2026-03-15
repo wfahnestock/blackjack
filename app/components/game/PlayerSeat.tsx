@@ -4,6 +4,7 @@ import { getSocket } from "~/lib/socket";
 import { getBestValue, formatChips } from "~/lib/handUtils";
 import { PlayerHand } from "./PlayerHand";
 import { StatusBadge } from "~/components/ui/Badge";
+import { DisplayName } from "~/components/ui/DisplayName";
 
 // ─── Payout floater ──────────────────────────────────────────────────────────
 
@@ -248,9 +249,13 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPl
           )}
         </div>
         <div className="flex flex-col min-w-0 text-left">
-          <span className={`text-sm font-semibold truncate max-w-[80px] ${isSelf ? "text-emerald-400" : "text-gray-200"}`}>
-            {player.displayName}
-            {isSelf && " (you)"}
+          <span className="text-sm font-semibold truncate max-w-[80px]">
+            <DisplayName
+              displayName={player.displayName}
+              nameEffect={player.nameEffect}
+              className={isSelf && !player.nameEffect ? "text-emerald-400" : "text-gray-200"}
+            />
+            {isSelf && <span className={isSelf && !player.nameEffect ? "text-emerald-400" : "text-gray-200"}> (you)</span>}
           </span>
           <span className="text-xs text-yellow-500 font-medium">
             {formatChips(player.chips)} chips

@@ -87,3 +87,96 @@ body {
   animation: toast-in-out 3.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
   pointer-events: none;
 }
+
+/* ─── Name effects ───────────────────────────────────────────────────────────── */
+
+@keyframes ne-shimmer {
+  0%   { background-position: 200% center; }
+  100% { background-position: 0%   center; }
+}
+
+@keyframes ne-rainbow-cycle {
+  0%   { background-position: 300% center; }
+  100% { background-position: 0%   center; }
+}
+
+@keyframes ne-glow-pulse {
+  0%, 100% { text-shadow: 0 0 6px #22d3ee80, 0 0 12px #22d3ee40; }
+  50%       { text-shadow: 0 0 12px #22d3ee, 0 0 28px #22d3ee80, 0 0 48px #22d3ee30; }
+}
+
+/* Gold */
+.ne-gold {
+  background-image: linear-gradient(90deg, #d97706 0%, #fbbf24 30%, #fde68a 50%, #fbbf24 70%, #d97706 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ne-shimmer 2.5s linear infinite;
+}
+
+/* Fire */
+.ne-fire {
+  background-image: linear-gradient(90deg, #b91c1c 0%, #ef4444 20%, #f97316 40%, #ef4444 65%, #dc2626 85%, #b91c1c 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ne-shimmer 1.6s linear infinite;
+}
+
+/* Ocean */
+.ne-ocean {
+  background-image: linear-gradient(90deg, #0369a1 0%, #0ea5e9 30%, #22d3ee 50%, #0ea5e9 70%, #0369a1 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ne-shimmer 3s linear infinite;
+}
+
+/* Neon */
+.ne-neon {
+  color: #22d3ee;
+  animation: ne-glow-pulse 1.8s ease-in-out infinite;
+}
+
+/* Galaxy */
+.ne-galaxy {
+  background-image: linear-gradient(90deg, #6d28d9 0%, #a855f7 25%, #ec4899 50%, #a855f7 75%, #6d28d9 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ne-shimmer 2.2s linear infinite;
+}
+
+/* Rainbow */
+.ne-rainbow {
+  background-image: linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #6366f1, #a855f7, #ef4444);
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: ne-rainbow-cycle 3s linear infinite;
+}
+
+@keyframes ne-glitch {
+  /* Idle — plain green most of the time */
+  0%, 79%  { text-shadow: none; transform: none; }
+  /* First burst */
+  80%      { text-shadow: -2px 0 #ff0050, 2px 0 #00ffff; transform: translateX(-2px); }
+  81%      { text-shadow:  2px 0 #ff0050,-2px 0 #00ffff; transform: translateX( 2px); }
+  82%      { text-shadow: none; transform: none; }
+  /* Short pause then second micro-burst */
+  86%      { text-shadow:  2px 0 #ff0050,-1px 0 #00ffff; transform: translateX( 1px); }
+  87%      { text-shadow: -1px 0 #ff0050, 2px 0 #00ffff; transform: translateX(-1px); }
+  88%, 100%{ text-shadow: none; transform: none; }
+}
+
+/* Developer (role-locked, not purchasable) */
+.ne-glitch {
+  color: #4ade80; /* terminal green */
+  display: inline-block; /* required for transform on inline text */
+  animation: ne-glitch 4s infinite;
+}

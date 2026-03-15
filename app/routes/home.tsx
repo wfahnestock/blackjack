@@ -4,6 +4,7 @@ import type { Route } from "./+types/home";
 import { Button } from "~/components/ui/Button";
 import { Input } from "~/components/ui/Input";
 import { ProfileModal } from "~/components/ui/ProfileModal";
+import { DisplayName } from "~/components/ui/DisplayName";
 import { RoomBrowser } from "~/components/home/RoomBrowser";
 import { useAuth } from "~/lib/AuthContext";
 import { useSocket } from "~/lib/useSocket";
@@ -174,7 +175,7 @@ export default function Home() {
               {user.displayName.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-white truncate">{user.displayName}</p>
+              <DisplayName displayName={user.displayName} nameEffect={user.equippedNameEffect} className="font-semibold truncate" />
               <p className="text-sm text-gray-500">@{user.username}</p>
             </div>
             <div className="text-right">

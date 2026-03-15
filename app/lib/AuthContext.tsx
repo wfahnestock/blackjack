@@ -14,6 +14,7 @@ export interface AuthUser {
   chips: number;
   lastDailyClaimed: string | null;
   roles: RoleInfo[];
+  equippedNameEffect: string | null;
 }
 
 interface AuthContextValue {
@@ -31,6 +32,8 @@ interface AuthContextValue {
   updateUserChips: (chips: number, lastDailyClaimed?: string | null) => void;
   /** Update local profile state after settings are saved. */
   updateUserProfile: (displayName: string, avatarColor: string) => void;
+  /** Update local equipped name-effect state after equipping/unequipping a vanity item. */
+  updateEquippedEffect: (effectKey: string | null) => void;
 }
 
 const AUTH_TOKEN_KEY = "bj_auth_token";
@@ -46,6 +49,7 @@ interface ServerPlayerResponse {
   chips: number;
   lastDailyClaimed: string | null;
   roles: RoleInfo[];
+  equippedNameEffect?: string | null;
 }
 
 interface AuthApiResponse {
@@ -76,6 +80,7 @@ function serverPlayerToAuthUser(player: ServerPlayerResponse): AuthUser {
     chips: player.chips,
     lastDailyClaimed: player.lastDailyClaimed,
     roles: player.roles ?? [],
+    equippedNameEffect: player.equippedNameEffect ?? null,
   };
 }
 
@@ -83,10 +88,12 @@ function loadStoredUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(AUTH_PLAYER_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as AuthUser & { role?: unknown };
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
     // Migrate old localStorage entries that stored a single `role` string
     if (!parsed.roles) parsed.roles = [];
-    return parsed;
+    // Migrate old entries without equippedNameEffect
+    if (!("equippedNameEffect" in parsed)) parsed.equippedNameEffect = null;
+    return parsed as unknown as AuthUser;
   } catch {
     return null;
   }
@@ -150,8 +157,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
   }
 
+  function updateEquippedEffect(effectKey: string | null): void {
+    if (!user) return;
+    const updated: AuthUser = { ...user, equippedNameEffect: effectKey };
+    setUser(updated);
+    localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips, updateUserProfile }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips, updateUserProfile, updateEquippedEffect }}>
       {children}
     </AuthContext.Provider>
   );

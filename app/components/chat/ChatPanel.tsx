@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { ChatMessage, RoleInfo } from "~/lib/types";
 import { MAX_CHAT_MESSAGE_LENGTH, MODERATOR_ROLE_NAMES } from "~/lib/constants";
+import { DisplayName } from "~/components/ui/DisplayName";
 
 /**
  * Maps the `color` key stored in the DB to a Tailwind text-color class.
@@ -147,9 +148,16 @@ export function ChatPanel({
                   className="w-2 h-2 rounded-full shrink-0"
                   style={{ backgroundColor: msg.avatarColor }}
                 />
-                <span className="text-xs font-medium text-gray-400 truncate max-w-[100px]">
-                  {isSelf ? "You" : msg.displayName}
-                </span>
+                {isSelf ? (
+                  <span className="text-xs font-medium text-gray-400 truncate max-w-[100px]">You</span>
+                ) : (
+                  <DisplayName
+                    displayName={msg.displayName}
+                    nameEffect={msg.nameEffect}
+                    roles={msg.roles}
+                    className="text-xs font-medium truncate max-w-[100px]"
+                  />
+                )}
                 {/* Role icons — one per role, icon only with hover tooltip */}
                 {msg.roles?.map((role) => (
                   <ChatRoleIcon key={role.id} role={role} />

@@ -1,5 +1,6 @@
 import type { Player } from "~/lib/types";
 import { formatChips } from "~/lib/handUtils";
+import { DisplayName } from "~/components/ui/DisplayName";
 
 interface PlayerListProps {
   players: Player[];
@@ -26,19 +27,23 @@ export function PlayerList({ players, selfPlayerId, onPlayerClick }: PlayerListP
             onClick={() => onPlayerClick?.(player.playerId)}
           >
             <div
-              className="w-8 h-8 rounded-full flex-shrink-0"
+              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-sm"
               style={{ backgroundColor: player.avatarColor }}
-            />
+            >
+              {player.displayName.charAt(0).toUpperCase()}
+            </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <span
+                <DisplayName
+                  displayName={player.displayName}
+                  nameEffect={player.nameEffect}
                   className={`text-sm font-semibold truncate ${
-                    player.playerId === selfPlayerId ? "text-emerald-400" : "text-gray-200"
+                    player.playerId === selfPlayerId && !player.nameEffect ? "text-emerald-400" : ""
                   }`}
-                >
-                  {player.displayName}
-                  {player.playerId === selfPlayerId && " (you)"}
-                </span>
+                />
+                {player.playerId === selfPlayerId && (
+                  <span className="text-sm font-semibold text-emerald-400">(you)</span>
+                )}
                 {player.isHost && (
                   <span className="text-xs bg-amber-900/50 text-amber-400 border border-amber-800 px-1.5 py-0.5 rounded-full">
                     Host
