@@ -331,10 +331,10 @@ function simulate() {
 
   // ── Results ───────────────────────────────────────────────────────────────
   const avgBet    = handsPlayed > 0 ? totalBets    / handsPlayed : 0;
-  const evPerHand = handsPlayed > 0 ? netChips     / handsPlayed : 0;
+  const evPerHand = totalBets   > 0 ? netChips     / totalBets   : 0;
   const bjFreq    = handsPlayed > 0 ? blackjacks   / handsPlayed : 0;
   const dbjFreq   = rounds      > 0 ? dealerBlackjacks / rounds  : 0;
-  const evPct     = avgBet      > 0 ? (evPerHand / avgBet) * 100 : 0;
+  const evPct     = evPerHand * 100;
 
   const pad = (s: string) => s.padEnd(25);
 
