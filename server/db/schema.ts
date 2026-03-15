@@ -1,11 +1,13 @@
 import { pgTable, uuid, varchar, integer, date, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core";
 
+
 export const players = pgTable("players", {
   id: uuid("id").primaryKey().defaultRandom(),
   username: varchar("username", { length: 32 }).notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
   displayName: varchar("display_name", { length: 50 }).notNull(),
   avatarColor: varchar("avatar_color", { length: 20 }).notNull().default("#10B981"),
+  equippedNameEffect: varchar("equipped_name_effect", { length: 30 }),
   chips: integer("chips").notNull().default(2500),
   lastDailyClaimed: date("last_daily_claimed"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -71,9 +73,23 @@ export const playerRoles = pgTable("player_roles", {
   pk: primaryKey({ columns: [t.playerId, t.roleId] }),
 }));
 
-export type Player         = typeof players.$inferSelect;
-export type NewPlayer      = typeof players.$inferInsert;
-export type PlayerStats    = typeof playerStats.$inferSelect;
-export type ChatMessageRow = typeof chatMessages.$inferSelect;
-export type Role           = typeof roles.$inferSelect;
-export type PlayerRoleRow  = typeof playerRoles.$inferSelect;
+/**
+ * Tracks which name-effect vanity items a player has purchased.
+ * The effect catalog is defined in app/lib/nameEffects.ts — no DB table needed
+ * for the catalog itself.
+ */
+export const playerOwnedEffects = pgTable("player_owned_effects", {
+  playerId:   uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  effectKey:  varchar("effect_key", { length: 30 }).notNull(),
+  acquiredAt: timestamp("acquired_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.playerId, t.effectKey] }),
+}));
+
+export type Player                  = typeof players.$inferSelect;
+export type NewPlayer               = typeof players.$inferInsert;
+export type PlayerStats             = typeof playerStats.$inferSelect;
+export type ChatMessageRow          = typeof chatMessages.$inferSelect;
+export type Role                    = typeof roles.$inferSelect;
+export type PlayerRoleRow           = typeof playerRoles.$inferSelect;
+export type PlayerOwnedEffectRow    = typeof playerOwnedEffects.$inferSelect;

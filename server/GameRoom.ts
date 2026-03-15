@@ -90,7 +90,8 @@ export class GameRoom {
     displayName: string,
     avatarColor: string,
     initialChips: number,
-    roles: RoleInfo[] = []
+    roles: RoleInfo[] = [],
+    nameEffect: string | null = null
   ): { success: boolean; error?: string } {
     if (this.playerCount >= MAX_PLAYERS) {
       return { success: false, error: "Room is full" };
@@ -123,6 +124,7 @@ export class GameRoom {
       status: "connected",
       isHost,
       avatarColor,
+      nameEffect,
     };
 
     this.machine.addPlayer(player);
@@ -266,6 +268,7 @@ export class GameRoom {
       playerId,
       displayName: player.displayName,
       avatarColor: player.avatarColor,
+      nameEffect: player.nameEffect,
       message,
       censored: false,
       timestamp: now,

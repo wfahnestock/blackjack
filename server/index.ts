@@ -14,6 +14,8 @@ import * as playerRepo from "./db/PlayerRepository.js";
 import * as roleRepo from "./db/RoleRepository.js";
 import * as statsRepo from "./db/StatsRepository.js";
 import * as authService from "./auth/AuthService.js";
+import * as vanityRepo from "./db/VanityRepository.js";
+import { NAME_EFFECT_KEYS, NAME_EFFECTS } from "../app/lib/nameEffects.js";
 
 // ─── Express ────────────────────────────────────────────────────────────────
 
@@ -277,6 +279,79 @@ app.put("/api/players/:id/settings", requireAuth, async (req: AuthedRequest, res
   }
 });
 
+// ─── Vanity Endpoints ─────────────────────────────────────────────────────────
+
+app.get("/api/vanity/name-effects", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const [owned, equipped] = await Promise.all([
+      vanityRepo.getOwnedEffects(req.playerId!),
+      vanityRepo.getEquippedEffect(req.playerId!),
+    ]);
+    res.json({ catalog: NAME_EFFECTS, owned, equipped });
+  } catch (err) {
+    console.error("[vanity/name-effects]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/api/vanity/name-effects/purchase", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const { effectKey } = req.body as { effectKey?: string };
+    if (!effectKey || !NAME_EFFECT_KEYS.has(effectKey) || effectKey === "default") {
+      res.status(400).json({ error: "Invalid effect" });
+      return;
+    }
+    const effect = NAME_EFFECTS.find((e) => e.key === effectKey)!;
+    if (effect.requiredRole) {
+      res.status(400).json({ error: "This effect cannot be purchased" });
+      return;
+    }
+    const result = await vanityRepo.purchaseEffect(req.playerId!, effectKey, effect.cost);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ chips: result.chips });
+  } catch (err) {
+    console.error("[vanity/purchase]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.put("/api/vanity/name-effects/equip", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const { effectKey } = req.body as { effectKey?: string | null };
+    const key = !effectKey || effectKey === "default" ? null : effectKey;
+    if (key !== null) {
+      if (!NAME_EFFECT_KEYS.has(key)) {
+        res.status(400).json({ error: "Invalid effect" });
+        return;
+      }
+      const effect = NAME_EFFECTS.find((e) => e.key === key)!;
+      if (effect?.requiredRole) {
+        // Role-locked effect: verify the player holds the required role
+        const playerRoles = await roleRepo.getPlayerRoles(req.playerId!);
+        if (!playerRoles.some((r) => r.name === effect.requiredRole)) {
+          res.status(403).json({ error: "You don't have access to this effect" });
+          return;
+        }
+      } else {
+        // Regular effect: verify ownership
+        const owned = await vanityRepo.getOwnedEffects(req.playerId!);
+        if (!owned.includes(key)) {
+          res.status(403).json({ error: "Effect not owned" });
+          return;
+        }
+      }
+    }
+    await vanityRepo.equipEffect(req.playerId!, key);
+    res.json({ effectKey: key });
+  } catch (err) {
+    console.error("[vanity/equip]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 
 type SocketData = { playerId: string; username: string };
@@ -363,7 +438,8 @@ io.on("connection", (socket: AppSocket) => {
         player.displayName,
         player.avatarColor,
         player.chips,
-        playerRoles
+        playerRoles,
+        player.equippedNameEffect ?? null
       );
       if (!result.success) {
         rooms.delete(code);
@@ -405,7 +481,8 @@ io.on("connection", (socket: AppSocket) => {
         player.displayName,
         player.avatarColor,
         player.chips,
-        playerRoles
+        playerRoles,
+        player.equippedNameEffect ?? null
       );
       if (!result.success) {
         callback({ success: false, error: result.error });

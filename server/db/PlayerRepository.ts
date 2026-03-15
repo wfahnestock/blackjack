@@ -88,13 +88,14 @@ export type LeaderboardStat = "chips" | "netWinnings" | "handsPlayed";
 export async function getLeaderboard(
   stat: LeaderboardStat,
   limit = 50
-): Promise<{ playerId: string; displayName: string; avatarColor: string; value: number }[]> {
+): Promise<{ playerId: string; displayName: string; avatarColor: string; nameEffect: string | null; value: number }[]> {
   if (stat === "chips") {
     return db
       .select({
         playerId: players.id,
         displayName: players.displayName,
         avatarColor: players.avatarColor,
+        nameEffect: players.equippedNameEffect,
         value: players.chips,
       })
       .from(players)
@@ -108,6 +109,7 @@ export async function getLeaderboard(
       playerId: players.id,
       displayName: players.displayName,
       avatarColor: players.avatarColor,
+      nameEffect: players.equippedNameEffect,
       value: col,
     })
     .from(players)
