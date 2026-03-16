@@ -103,6 +103,8 @@ export interface Player {
   avatarColor: string;
   /** Equipped vanity name-effect key, or null for default white text. */
   nameEffect: string | null;
+  /** Equipped card skin key, or null for the classic white/blue default. Visible to all players at the table. */
+  cardSkin: string | null;
 }
 
 // ─── Game Settings ─────────────────────────────────────────────────────────────
@@ -155,6 +157,11 @@ export interface GameState {
   roundNumber: number;
   settings: GameSettings;
   hiLoCount: number | null;
+  /**
+   * Card skin key applied to the dealer's deck.  Always `null` under normal play.
+   * Reserved for a future event system (e.g. "Gold Dealer" double-payout event).
+   */
+  dealerCardSkin: string | null;
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────

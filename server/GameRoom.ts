@@ -91,7 +91,8 @@ export class GameRoom {
     avatarColor: string,
     initialChips: number,
     roles: RoleInfo[] = [],
-    nameEffect: string | null = null
+    nameEffect: string | null = null,
+    cardSkin: string | null = null
   ): { success: boolean; error?: string } {
     if (this.playerCount >= MAX_PLAYERS) {
       return { success: false, error: "Room is full" };
@@ -125,6 +126,7 @@ export class GameRoom {
       isHost,
       avatarColor,
       nameEffect,
+      cardSkin,
     };
 
     this.machine.addPlayer(player);

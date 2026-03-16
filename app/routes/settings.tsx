@@ -6,6 +6,9 @@ import { DisplayName } from "~/components/ui/DisplayName";
 import { useAuth } from "~/lib/AuthContext";
 import { AVATAR_COLORS } from "~/lib/usePlayer";
 import { NAME_EFFECTS, nameEffectClass, type NameEffectDef } from "~/lib/nameEffects";
+import { CARD_SKINS, cardSkinFaceClass, cardSkinBackClass, type CardSkinDef } from "~/lib/cardSkins";
+import { TABLE_BGS, tableBgClass, type TableBgDef } from "~/lib/tableBgs";
+import { PlayingCard } from "~/components/game/PlayingCard";
 
 export function meta() {
   return [{ title: "Account Settings — Blackjack" }];
@@ -21,9 +24,19 @@ interface VanityState {
   error: string;
 }
 
+// ─── Skin shop state ──────────────────────────────────────────────────────────
+
+interface SkinShopState {
+  owned: string[];
+  equipped: string | null;
+  loading: boolean;
+  actionLoading: string | null;
+  error: string;
+}
+
 export default function Settings() {
   const navigate = useNavigate();
-  const { user, token, updateUserProfile, updateEquippedEffect, updateUserChips } = useAuth();
+  const { user, token, updateUserProfile, updateEquippedEffect, updateUserChips, updateEquippedCardSkin, updateEquippedTableBg } = useAuth();
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -56,6 +69,106 @@ export default function Settings() {
       })
       .catch(() => {
         setVanity((v) => ({ ...v, loading: false, error: "Couldn't load name effects" }));
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ─── Card skin shop ────────────────────────────────────────────────────────
+  const [cardSkins, setCardSkins] = useState<SkinShopState>({
+    owned:         [],
+    equipped:      user?.equippedCardSkin ?? null,
+    loading:       true,
+    actionLoading: null,
+    error:         "",
+  });
+
+  useEffect(() => {
+    fetch("/api/vanity/card-skins", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { owned: string[]; equipped: string | null }) => {
+        setCardSkins((v) => ({ ...v, owned: data.owned, equipped: data.equipped, loading: false }));
+      })
+      .catch(() => {
+        setCardSkins((v) => ({ ...v, loading: false, error: "Couldn't load card skins" }));
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function ownsSkin(state: SkinShopState, key: string): boolean {
+    return key === "default" || state.owned.includes(key);
+  }
+
+  async function handlePurchaseSkin(
+    setState: React.Dispatch<React.SetStateAction<SkinShopState>>,
+    skin: CardSkinDef | TableBgDef,
+    endpoint: string
+  ) {
+    setState((v) => ({ ...v, actionLoading: skin.key, error: "" }));
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ skinKey: skin.key }),
+      });
+      const data = (await res.json()) as { chips?: number; error?: string };
+      if (!res.ok) {
+        setState((v) => ({ ...v, actionLoading: null, error: data.error ?? "Purchase failed" }));
+        return;
+      }
+      setState((v) => ({ ...v, owned: [...v.owned, skin.key], actionLoading: null }));
+      if (data.chips != null) updateUserChips(data.chips);
+    } catch {
+      setState((v) => ({ ...v, actionLoading: null, error: "Network error" }));
+    }
+  }
+
+  async function handleEquipSkin(
+    setState: React.Dispatch<React.SetStateAction<SkinShopState>>,
+    skinKey: string | null,
+    endpoint: string,
+    onSuccess: (key: string | null) => void
+  ) {
+    const key = skinKey === "default" ? null : skinKey;
+    setState((v) => ({ ...v, actionLoading: skinKey ?? "default", error: "" }));
+    try {
+      const res = await fetch(endpoint, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ skinKey: key }),
+      });
+      const data = (await res.json()) as { skinKey: string | null; error?: string };
+      if (!res.ok) {
+        setState((v) => ({ ...v, actionLoading: null, error: data.error ?? "Equip failed" }));
+        return;
+      }
+      setState((v) => ({ ...v, equipped: data.skinKey, actionLoading: null }));
+      onSuccess(data.skinKey);
+    } catch {
+      setState((v) => ({ ...v, actionLoading: null, error: "Network error" }));
+    }
+  }
+
+  // ─── Table background shop ─────────────────────────────────────────────────
+  const [tableBgs, setTableBgs] = useState<SkinShopState>({
+    owned:         [],
+    equipped:      user?.equippedTableBg ?? null,
+    loading:       true,
+    actionLoading: null,
+    error:         "",
+  });
+
+  useEffect(() => {
+    fetch("/api/vanity/table-bgs", {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
+      .then((data: { owned: string[]; equipped: string | null }) => {
+        setTableBgs((v) => ({ ...v, owned: data.owned, equipped: data.equipped, loading: false }));
+      })
+      .catch(() => {
+        setTableBgs((v) => ({ ...v, loading: false, error: "Couldn't load backgrounds" }));
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -386,6 +499,188 @@ export default function Settings() {
             </button>
           )}
         </div>
+
+        {/* ── Card Skins shop ── */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
+          <div>
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Card Skins</h2>
+            <p className="text-xs text-gray-600 mt-1">
+              Style your deck. Other players can see your card skin at the table.
+            </p>
+          </div>
+
+          {/* Preview */}
+          <div className="flex items-center gap-3 py-1">
+            <PlayingCard
+              card={{ suit: "spades", rank: "A", faceDown: false }}
+              skin={cardSkins.equipped}
+              small
+            />
+            <PlayingCard
+              card={{ suit: "hearts", rank: "K", faceDown: true }}
+              skin={cardSkins.equipped}
+              small
+            />
+            <span className="text-xs text-gray-500 ml-1">
+              {CARD_SKINS.find((s) => s.key === (cardSkins.equipped ?? "default"))?.label ?? "Default"}
+            </span>
+          </div>
+
+          {cardSkins.error && <p className="text-sm text-red-400">{cardSkins.error}</p>}
+
+          {cardSkins.loading ? (
+            <p className="text-sm text-gray-500 text-center py-4">Loading…</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {CARD_SKINS.map((skin) => {
+                const owned    = ownsSkin(cardSkins, skin.key);
+                const equipped = cardSkins.equipped === skin.key
+                               || (skin.key === "default" && !cardSkins.equipped);
+                const isActing = cardSkins.actionLoading === skin.key;
+
+                return (
+                  <div
+                    key={skin.key}
+                    className={`
+                      flex flex-col gap-2 p-3 rounded-xl border transition-colors
+                      ${equipped
+                        ? "border-emerald-500/50 bg-emerald-950/30"
+                        : "border-gray-700/60 bg-gray-800/40"}
+                    `}
+                  >
+                    {/* Mini card preview */}
+                    <div className="flex gap-1">
+                      <div className={`w-6 h-8 rounded border text-[8px] font-bold flex flex-col justify-between p-0.5 leading-none select-none ${cardSkinFaceClass(skin.key) || "bg-white border-gray-200 text-gray-900"}`}>
+                        <span>A</span><span>♠</span>
+                      </div>
+                      <div className={`w-6 h-8 rounded border flex items-center justify-center select-none ${cardSkinBackClass(skin.key) || "bg-blue-900 border-blue-700"}`}>
+                        <div className="w-full h-full rounded m-px" style={!cardSkinBackClass(skin.key) ? { backgroundImage: "repeating-linear-gradient(45deg,#1e3a5f 0,#1e3a5f 2px,#1a3355 2px,#1a3355 4px)" } : undefined} />
+                      </div>
+                    </div>
+
+                    <p className="text-xs font-semibold text-white">{skin.label}</p>
+                    <p className="text-xs text-gray-500 leading-tight">{skin.description}</p>
+
+                    {equipped ? (
+                      <span className="text-xs font-semibold text-emerald-400">✓ Equipped</span>
+                    ) : owned ? (
+                      <button
+                        onClick={() => handleEquipSkin(setCardSkins, skin.key, "/api/vanity/card-skins/equip", updateEquippedCardSkin)}
+                        disabled={!!cardSkins.actionLoading}
+                        className="text-xs font-semibold text-gray-300 hover:text-white transition-colors disabled:opacity-50 text-left"
+                      >
+                        {isActing ? "Equipping…" : "Equip"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handlePurchaseSkin(setCardSkins, skin, "/api/vanity/card-skins/purchase")}
+                        disabled={!!cardSkins.actionLoading || (user?.chips ?? 0) < skin.cost}
+                        className="text-xs font-semibold text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50 text-left"
+                      >
+                        {isActing ? "Buying…" : `${skin.cost.toLocaleString()} chips`}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {cardSkins.equipped && (
+            <button
+              onClick={() => handleEquipSkin(setCardSkins, null, "/api/vanity/card-skins/equip", updateEquippedCardSkin)}
+              disabled={!!cardSkins.actionLoading}
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors self-center disabled:opacity-50"
+            >
+              {cardSkins.actionLoading ? "Removing…" : "Remove skin"}
+            </button>
+          )}
+        </div>
+
+        {/* ── Table Backgrounds shop ── */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
+          <div>
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Table Backgrounds</h2>
+            <p className="text-xs text-gray-600 mt-1">
+              Customize your felt. Only you can see your table background.
+            </p>
+          </div>
+
+          {/* Preview */}
+          <div
+            className={`h-14 rounded-xl border border-white/10 transition-all ${tableBgClass(tableBgs.equipped)}`}
+          >
+            <div className="flex items-center justify-end h-full px-3">
+              <span className="text-xs text-white/40 font-medium">
+                {TABLE_BGS.find((b) => b.key === (tableBgs.equipped ?? "default"))?.label ?? "Default"}
+              </span>
+            </div>
+          </div>
+
+          {tableBgs.error && <p className="text-sm text-red-400">{tableBgs.error}</p>}
+
+          {tableBgs.loading ? (
+            <p className="text-sm text-gray-500 text-center py-4">Loading…</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              {TABLE_BGS.map((bg) => {
+                const owned    = ownsSkin(tableBgs, bg.key);
+                const equipped = tableBgs.equipped === bg.key
+                               || (bg.key === "default" && !tableBgs.equipped);
+                const isActing = tableBgs.actionLoading === bg.key;
+
+                return (
+                  <div
+                    key={bg.key}
+                    className={`
+                      flex flex-col gap-2 p-3 rounded-xl border transition-colors
+                      ${equipped
+                        ? "border-emerald-500/50 bg-emerald-950/30"
+                        : "border-gray-700/60 bg-gray-800/40"}
+                    `}
+                  >
+                    {/* Swatch */}
+                    <div className={`h-8 rounded-lg border border-white/10 ${tableBgClass(bg.key)}`} />
+
+                    <p className="text-xs font-semibold text-white">{bg.label}</p>
+                    <p className="text-xs text-gray-500 leading-tight">{bg.description}</p>
+
+                    {equipped ? (
+                      <span className="text-xs font-semibold text-emerald-400">✓ Equipped</span>
+                    ) : owned ? (
+                      <button
+                        onClick={() => handleEquipSkin(setTableBgs, bg.key, "/api/vanity/table-bgs/equip", updateEquippedTableBg)}
+                        disabled={!!tableBgs.actionLoading}
+                        className="text-xs font-semibold text-gray-300 hover:text-white transition-colors disabled:opacity-50 text-left"
+                      >
+                        {isActing ? "Equipping…" : "Equip"}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handlePurchaseSkin(setTableBgs, bg, "/api/vanity/table-bgs/purchase")}
+                        disabled={!!tableBgs.actionLoading || (user?.chips ?? 0) < bg.cost}
+                        className="text-xs font-semibold text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50 text-left"
+                      >
+                        {isActing ? "Buying…" : `${bg.cost.toLocaleString()} chips`}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {tableBgs.equipped && (
+            <button
+              onClick={() => handleEquipSkin(setTableBgs, null, "/api/vanity/table-bgs/equip", updateEquippedTableBg)}
+              disabled={!!tableBgs.actionLoading}
+              className="text-xs text-gray-600 hover:text-gray-400 transition-colors self-center disabled:opacity-50"
+            >
+              {tableBgs.actionLoading ? "Removing…" : "Remove background"}
+            </button>
+          )}
+        </div>
+
       </div>
     </div>
   );

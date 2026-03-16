@@ -8,6 +8,8 @@ export const players = pgTable("players", {
   displayName: varchar("display_name", { length: 50 }).notNull(),
   avatarColor: varchar("avatar_color", { length: 20 }).notNull().default("#10B981"),
   equippedNameEffect: varchar("equipped_name_effect", { length: 30 }),
+  equippedCardSkin:   varchar("equipped_card_skin",   { length: 30 }),
+  equippedTableBg:    varchar("equipped_table_bg",    { length: 30 }),
   chips: integer("chips").notNull().default(2500),
   lastDailyClaimed: date("last_daily_claimed"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -95,6 +97,20 @@ export const playerOwnedEffects = pgTable("player_owned_effects", {
   pk: primaryKey({ columns: [t.playerId, t.effectKey] }),
 }));
 
+/**
+ * Tracks which skin vanity items (card skins, table backgrounds) a player has purchased.
+ * skinType is 'card' or 'table-bg'. The skin catalog is defined in app/lib/cardSkins.ts
+ * and app/lib/tableBgs.ts — no DB table needed for the catalogs themselves.
+ */
+export const playerOwnedSkins = pgTable("player_owned_skins", {
+  playerId:   uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  skinType:   varchar("skin_type", { length: 20 }).notNull(), // 'card' | 'table-bg'
+  skinKey:    varchar("skin_key",  { length: 30 }).notNull(),
+  acquiredAt: timestamp("acquired_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.playerId, t.skinType, t.skinKey] }),
+}));
+
 export type Player                  = typeof players.$inferSelect;
 export type NewPlayer               = typeof players.$inferInsert;
 export type PlayerStats             = typeof playerStats.$inferSelect;
@@ -102,4 +118,5 @@ export type ChatMessageRow          = typeof chatMessages.$inferSelect;
 export type Role                    = typeof roles.$inferSelect;
 export type PlayerRoleRow           = typeof playerRoles.$inferSelect;
 export type PlayerOwnedEffectRow    = typeof playerOwnedEffects.$inferSelect;
+export type PlayerOwnedSkinRow      = typeof playerOwnedSkins.$inferSelect;
 export type PlayerAchievementRow    = typeof playerAchievements.$inferSelect;
