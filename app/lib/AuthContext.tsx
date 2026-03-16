@@ -15,6 +15,10 @@ export interface AuthUser {
   lastDailyClaimed: string | null;
   roles: RoleInfo[];
   equippedNameEffect: string | null;
+  /** Equipped card skin key — visible to all players at the table. */
+  equippedCardSkin: string | null;
+  /** Equipped table background key — local-only, never broadcast to other players. */
+  equippedTableBg: string | null;
 }
 
 interface AuthContextValue {
@@ -34,6 +38,10 @@ interface AuthContextValue {
   updateUserProfile: (displayName: string, avatarColor: string) => void;
   /** Update local equipped name-effect state after equipping/unequipping a vanity item. */
   updateEquippedEffect: (effectKey: string | null) => void;
+  /** Update local equipped card skin state after equipping/unequipping. */
+  updateEquippedCardSkin: (skinKey: string | null) => void;
+  /** Update local equipped table background state after equipping/unequipping. */
+  updateEquippedTableBg: (bgKey: string | null) => void;
 }
 
 const AUTH_TOKEN_KEY = "bj_auth_token";
@@ -50,6 +58,8 @@ interface ServerPlayerResponse {
   lastDailyClaimed: string | null;
   roles: RoleInfo[];
   equippedNameEffect?: string | null;
+  equippedCardSkin?: string | null;
+  equippedTableBg?: string | null;
 }
 
 interface AuthApiResponse {
@@ -81,6 +91,8 @@ function serverPlayerToAuthUser(player: ServerPlayerResponse): AuthUser {
     lastDailyClaimed: player.lastDailyClaimed,
     roles: player.roles ?? [],
     equippedNameEffect: player.equippedNameEffect ?? null,
+    equippedCardSkin:   player.equippedCardSkin   ?? null,
+    equippedTableBg:    player.equippedTableBg    ?? null,
   };
 }
 
@@ -93,6 +105,9 @@ function loadStoredUser(): AuthUser | null {
     if (!parsed.roles) parsed.roles = [];
     // Migrate old entries without equippedNameEffect
     if (!("equippedNameEffect" in parsed)) parsed.equippedNameEffect = null;
+    // Migrate old entries without skin fields
+    if (!("equippedCardSkin" in parsed)) parsed.equippedCardSkin = null;
+    if (!("equippedTableBg"  in parsed)) parsed.equippedTableBg  = null;
     return parsed as unknown as AuthUser;
   } catch {
     return null;
@@ -164,8 +179,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
   }
 
+  function updateEquippedCardSkin(skinKey: string | null): void {
+    if (!user) return;
+    const updated: AuthUser = { ...user, equippedCardSkin: skinKey };
+    setUser(updated);
+    localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
+  }
+
+  function updateEquippedTableBg(bgKey: string | null): void {
+    if (!user) return;
+    const updated: AuthUser = { ...user, equippedTableBg: bgKey };
+    setUser(updated);
+    localStorage.setItem(AUTH_PLAYER_KEY, JSON.stringify(updated));
+  }
+
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips, updateUserProfile, updateEquippedEffect }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips, updateUserProfile, updateEquippedEffect, updateEquippedCardSkin, updateEquippedTableBg }}>
       {children}
     </AuthContext.Provider>
   );
