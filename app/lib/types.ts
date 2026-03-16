@@ -33,6 +33,20 @@ export interface Card {
 
 export type HandResult = "win" | "lose" | "push" | "blackjack" | "bust" | "five-card-charlie" | null;
 
+export interface ActionRecord {
+  action: "hit" | "stand" | "double" | "split";
+  /** Best hand value before this action was taken. */
+  handValueBefore: number;
+  isSoftBefore: boolean;
+  /** True if hand was a splittable pair before this action. */
+  isPairBefore: boolean;
+  /** The first card rank of the pair (only meaningful when isPairBefore is true). */
+  pairRank: Rank | null;
+  dealerUpcard: Rank;
+  /** Number of cards in hand before this action. */
+  cardCountBefore: number;
+}
+
 export interface Hand {
   handId: string;
   cards: Card[];
@@ -44,6 +58,28 @@ export interface Hand {
   result: HandResult;
   insuranceBet: number;
   splitFromHandId: string | null;
+  /** Every player decision made on this hand, in order. */
+  actionHistory: ActionRecord[];
+}
+
+// ─── Achievements ─────────────────────────────────────────────────────────────
+
+export type AchievementCategory =
+  | "skill"
+  | "streak"
+  | "gambler"
+  | "rare"
+  | "comeback"
+  | "meta"
+  | "funny";
+
+export interface AchievementInfo {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  category: AchievementCategory;
+  unlockedAt: number | null; // epoch ms, null = locked
 }
 
 // ─── Player ───────────────────────────────────────────────────────────────────
@@ -261,6 +297,8 @@ export interface ServerToClientEvents {
 
   "chat:message_removed": (payload: { messageId: string }) => void;
   "chat:cleared": (payload: { clearedBy: string }) => void;
+
+  "achievement:unlocked": (payload: { playerId: string; achievement: AchievementInfo }) => void;
 
   /** Server pushes an updated public room list whenever a room's discoverable state changes. */
   "rooms:updated": (rooms: RoomListing[]) => void;
