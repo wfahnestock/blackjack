@@ -15,6 +15,9 @@ import * as roleRepo from "./db/RoleRepository.js";
 import * as statsRepo from "./db/StatsRepository.js";
 import * as authService from "./auth/AuthService.js";
 import * as vanityRepo from "./db/VanityRepository.js";
+import * as achievementRepo from "./db/AchievementRepository.js";
+import * as achievementEngine from "./achievements/AchievementEngine.js";
+import { ACHIEVEMENTS, ACHIEVEMENT_MAP } from "./achievements/definitions.js";
 import { NAME_EFFECT_KEYS, NAME_EFFECTS } from "../app/lib/nameEffects.js";
 
 // ─── Express ────────────────────────────────────────────────────────────────
@@ -212,6 +215,30 @@ app.get("/api/leaderboard", requireAuth, async (req: AuthedRequest, res) => {
     res.json(entries);
   } catch (err) {
     console.error("[leaderboard]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/api/players/:id/achievements", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const unlocked = await achievementRepo.getUnlocked(req.params["id"] as string);
+    const unlockedMap = new Map(unlocked.map((u) => [u.achievementId, u.unlockedAt]));
+
+    const achievements = ACHIEVEMENTS.map((def) => {
+      const unlockedAt = unlockedMap.get(def.id);
+      return {
+        id: def.id,
+        name: def.name,
+        description: def.description,
+        icon: def.icon,
+        category: def.category,
+        unlockedAt: unlockedAt ? unlockedAt.getTime() : null,
+      };
+    });
+
+    res.json({ achievements });
+  } catch (err) {
+    console.error("[achievements]", err);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -422,10 +449,29 @@ io.on("connection", (socket: AppSocket) => {
         io,
         payload.settings ?? {},
         async (players, results) => {
+          const dealerBusted = room.state.dealerHand.cards.length > 0 &&
+            room.state.dealerHand.cards.every((c) => !c.faceDown) &&
+            (() => {
+              const cards = room.state.dealerHand.cards;
+              let best = 0, aces = 0;
+              for (const c of cards) {
+                if (c.rank === "A") { best += 11; aces++; }
+                else best += Math.min(10, Number(c.rank) || 10);
+              }
+              while (best > 21 && aces-- > 0) best -= 10;
+              return best > 21;
+            })();
+
           await Promise.all([
             Promise.all(players.map((p) => playerRepo.updateChips(p.playerId, p.chips))),
             statsRepo.recordRoundResults(results, players),
           ]);
+          await achievementEngine.processRound(
+            players,
+            results,
+            (event, data) => (io.to(code) as any).emit(event, data),
+            dealerBusted
+          );
         },
         broadcastRoomList
       );
