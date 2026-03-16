@@ -103,6 +103,7 @@ function makeHand(bet = 0, splitFrom: string | null = null): Hand {
     result: null,
     insuranceBet: 0,
     splitFromHandId: splitFrom,
+    actionHistory: [],
   };
 }
 
