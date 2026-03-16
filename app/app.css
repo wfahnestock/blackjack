@@ -234,3 +234,139 @@ body {
   display: inline-block; /* required for transform on inline text */
   animation: ne-glitch 4s infinite;
 }
+
+/* ─── Card skins ─────────────────────────────────────────────────────────────
+   cs-face-{key} is applied to the face-up card wrapper.
+   cs-back-{key} is applied to the face-down card wrapper.
+   Both are kept in sync per skin so the deck feels cohesive.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Gold */
+.cs-face-gold {
+  background-color: #fffdf0 !important;
+  border-color: #c8960c !important;
+  box-shadow: 0 0 0 1px #d4af3740, 0 2px 6px #d4af3730 !important;
+}
+.cs-back-gold {
+  background-color: #7a5c00 !important;
+  border-color: #c8960c !important;
+}
+.cs-back-gold > div {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #8a6800 0px, #8a6800 4px,
+    #7a5c00 4px, #7a5c00 8px
+  ) !important;
+  border-color: #d4af37 !important;
+}
+
+/* Midnight */
+.cs-face-midnight {
+  background-color: #0f1729 !important;
+  border-color: #3b5bdb !important;
+  box-shadow: 0 0 0 1px #3b5bdb40, 0 2px 6px #3b5bdb20 !important;
+}
+.cs-face-midnight .text-gray-900 {
+  color: #e2e8f0 !important;
+}
+.cs-face-midnight .text-red-600 {
+  color: #f87171 !important;
+}
+.cs-back-midnight {
+  background-color: #0b1021 !important;
+  border-color: #3b5bdb !important;
+}
+.cs-back-midnight > div {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #1a2744 0px, #1a2744 4px,
+    #0f1a38 4px, #0f1a38 8px
+  ) !important;
+  border-color: #4c6ef5 !important;
+}
+
+/* Rose */
+.cs-face-rose {
+  background-color: #fff5f7 !important;
+  border-color: #f43f5e !important;
+  box-shadow: 0 0 0 1px #f43f5e30, 0 2px 6px #f43f5e20 !important;
+}
+.cs-back-rose {
+  background-color: #881337 !important;
+  border-color: #f43f5e !important;
+}
+.cs-back-rose > div {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #9f1239 0px, #9f1239 4px,
+    #881337 4px, #881337 8px
+  ) !important;
+  border-color: #fb7185 !important;
+}
+
+/* Neon */
+@keyframes cs-neon-glow {
+  0%, 100% { box-shadow: 0 0 4px #22d3ee80, 0 0 0 1px #22d3ee60; }
+  50%       { box-shadow: 0 0 10px #22d3ee, 0 0 0 1px #22d3ee, 0 0 20px #22d3ee40; }
+}
+.cs-face-neon {
+  background-color: #0b1a1f !important;
+  border-color: #22d3ee !important;
+  animation: cs-neon-glow 2s ease-in-out infinite;
+}
+.cs-face-neon .text-gray-900 {
+  color: #e0f7fa !important;
+}
+.cs-face-neon .text-red-600 {
+  color: #f06292 !important;
+}
+.cs-back-neon {
+  background-color: #071419 !important;
+  border-color: #22d3ee !important;
+  animation: cs-neon-glow 2s ease-in-out infinite;
+}
+.cs-back-neon > div {
+  background-image: repeating-linear-gradient(
+    45deg,
+    #0d2329 0px, #0d2329 4px,
+    #071419 4px, #071419 8px
+  ) !important;
+  border-color: #67e8f9 !important;
+}
+
+/* ─── Table backgrounds ──────────────────────────────────────────────────────
+   tb-{key} replaces felt-bg on the root game table div.
+   Each uses the same radial-gradient + subtle texture pattern as felt-bg.
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* Midnight — deep navy */
+.tb-midnight {
+  background-color: #080e1f;
+  background-image:
+    radial-gradient(ellipse at top, #0d1a40 0%, #050c1a 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23050c1a'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%230a1430' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* Velvet — deep burgundy */
+.tb-velvet {
+  background-color: #1c0511;
+  background-image:
+    radial-gradient(ellipse at top, #2e0819 0%, #160310 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23160310'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23240518' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* Casino Red — classic Vegas red */
+.tb-casino {
+  background-color: #200505;
+  background-image:
+    radial-gradient(ellipse at top, #3d0808 0%, #180404 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23180404'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23290606' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+/* Ocean — cool deep teal */
+.tb-ocean {
+  background-color: #021820;
+  background-image:
+    radial-gradient(ellipse at top, #05303f 0%, #011419 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4'%3E%3Crect width='4' height='4' fill='%23011419'/%3E%3Crect x='0' y='0' width='1' height='1' fill='%23042530' opacity='0.5'/%3E%3C/svg%3E");
+}
