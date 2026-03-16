@@ -12,7 +12,8 @@ type SoundKey =
   | "player_stand"
   | "player_bust"
   | "player_double_down"
-  | "player_5card";
+  | "player_5card"
+  | "applaud";
 
 const SOUND_SRCS: Record<SoundKey, string> = {
   card_draw:          "/sounds/card_draw.mp3",
@@ -25,6 +26,7 @@ const SOUND_SRCS: Record<SoundKey, string> = {
   player_bust:        "/sounds/player_bust.mp3",
   player_double_down: "/sounds/player_double_down.mp3",
   player_5card:       "/sounds/player_5card.mp3",
+  applaud:            "/sounds/applaud.mp3",
 };
 
 // Per-hand tracking so we can tell what changed between updates.
@@ -46,6 +48,7 @@ export function useSoundEffects(state: GameState | null, selfPlayerId: string | 
     player_bust:        null,
     player_double_down: null,
     player_5card:       null,
+    applaud:            null,
   });
 
   const prevPhase      = useRef<GameState["phase"] | null>(null);
@@ -164,20 +167,24 @@ export function useSoundEffects(state: GameState | null, selfPlayerId: string | 
       }
     };
 
-    socket.on("game:card-dealt",      onCardDealt as any);
-    socket.on("state:hand-updated",   onHandUpdated as any);
-    socket.on("state:sync",           onSync as any);
-    socket.on("state:player-updated", onPlayerUpdated as any);
-    socket.on("game:shuffle",         onShuffle);
-    socket.on("game:round-result",    onRoundResult as any);
+    const onAchievementUnlocked = () => play("applaud");
+
+    socket.on("game:card-dealt",       onCardDealt as any);
+    socket.on("state:hand-updated",    onHandUpdated as any);
+    socket.on("state:sync",            onSync as any);
+    socket.on("state:player-updated",  onPlayerUpdated as any);
+    socket.on("game:shuffle",          onShuffle);
+    socket.on("game:round-result",     onRoundResult as any);
+    socket.on("achievement:unlocked",  onAchievementUnlocked as any);
 
     return () => {
-      socket.off("game:card-dealt",      onCardDealt as any);
-      socket.off("state:hand-updated",   onHandUpdated as any);
-      socket.off("state:sync",           onSync as any);
-      socket.off("state:player-updated", onPlayerUpdated as any);
-      socket.off("game:shuffle",         onShuffle);
-      socket.off("game:round-result",    onRoundResult as any);
+      socket.off("game:card-dealt",       onCardDealt as any);
+      socket.off("state:hand-updated",    onHandUpdated as any);
+      socket.off("state:sync",            onSync as any);
+      socket.off("state:player-updated",  onPlayerUpdated as any);
+      socket.off("game:shuffle",          onShuffle);
+      socket.off("game:round-result",     onRoundResult as any);
+      socket.off("achievement:unlocked",  onAchievementUnlocked as any);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }
