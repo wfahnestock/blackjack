@@ -8,9 +8,11 @@ interface PlayerHandProps {
   hand: Hand;
   isActive: boolean;
   small?: boolean;
+  /** Card skin key from the owning player. */
+  cardSkin?: string | null;
 }
 
-export function PlayerHand({ hand, isActive, small = false }: PlayerHandProps) {
+export function PlayerHand({ hand, isActive, small = false, cardSkin }: PlayerHandProps) {
   const score = getScoreDisplay(hand.cards);
   const best = getBestValue(hand.cards);
   const isBust = best > 21;
@@ -29,6 +31,7 @@ export function PlayerHand({ hand, isActive, small = false }: PlayerHandProps) {
             key={i}
             card={card}
             small={small}
+            skin={cardSkin}
             className="transition-all duration-200"
             style={{ zIndex: i }}
           />

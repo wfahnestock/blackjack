@@ -1,10 +1,13 @@
 import type { Card } from "~/lib/types";
+import { cardSkinFaceClass, cardSkinBackClass } from "~/lib/cardSkins";
 
 interface PlayingCardProps {
   card: Card;
   small?: boolean;
   className?: string;
   style?: React.CSSProperties;
+  /** Card skin key from the owning player (or dealer).  Null/undefined = default styling. */
+  skin?: string | null;
 }
 
 const SUIT_SYMBOLS: Record<string, string> = {
@@ -16,9 +19,9 @@ const SUIT_SYMBOLS: Record<string, string> = {
 
 const RED_SUITS = new Set(["hearts", "diamonds"]);
 
-export function PlayingCard({ card, small = false, className = "", style }: PlayingCardProps) {
+export function PlayingCard({ card, small = false, className = "", style, skin }: PlayingCardProps) {
   if (card.faceDown) {
-    return <CardBack small={small} className={className} style={style} />;
+    return <CardBack small={small} className={className} style={style} skin={skin} />;
   }
 
   const isRed = RED_SUITS.has(card.suit);
@@ -26,12 +29,14 @@ export function PlayingCard({ card, small = false, className = "", style }: Play
   const w = small ? "w-11" : "w-14";
   const h = small ? "h-16" : "h-20";
   const text = small ? "text-sm" : "text-base";
+  const faceClass = cardSkinFaceClass(skin);
 
   return (
     <div
       className={`
         ${w} ${h} rounded-lg bg-white border border-gray-200 shadow-md
         flex flex-col justify-between p-1 select-none card-appear
+        ${faceClass}
         ${className}
       `}
       style={style}
@@ -50,15 +55,17 @@ export function PlayingCard({ card, small = false, className = "", style }: Play
   );
 }
 
-function CardBack({ small = false, className = "", style }: { small?: boolean; className?: string; style?: React.CSSProperties }) {
+function CardBack({ small = false, className = "", style, skin }: { small?: boolean; className?: string; style?: React.CSSProperties; skin?: string | null }) {
   const w = small ? "w-11" : "w-14";
   const h = small ? "h-16" : "h-20";
+  const backClass = cardSkinBackClass(skin);
 
   return (
     <div
       className={`
         ${w} ${h} rounded-lg bg-blue-900 border border-blue-700 shadow-md
         flex items-center justify-center select-none card-appear
+        ${backClass}
         ${className}
       `}
       style={style}

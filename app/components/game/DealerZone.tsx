@@ -4,9 +4,12 @@ import { getScoreDisplay, getBestValue } from "~/lib/handUtils";
 
 interface DealerZoneProps {
   hand: Hand;
+  /** Card skin key for the dealer's deck.  Null = default styling.
+   *  Reserved for future event-driven skins (e.g. "Gold Dealer" events). */
+  cardSkin?: string | null;
 }
 
-export function DealerZone({ hand }: DealerZoneProps) {
+export function DealerZone({ hand, cardSkin }: DealerZoneProps) {
   const score = getScoreDisplay(hand.cards);
   const best = getBestValue(hand.cards);
   const isBust = best > 21;
@@ -23,6 +26,7 @@ export function DealerZone({ hand }: DealerZoneProps) {
           <PlayingCard
             key={i}
             card={card}
+            skin={cardSkin}
             style={{ zIndex: i, position: "relative" }}
           />
         ))}

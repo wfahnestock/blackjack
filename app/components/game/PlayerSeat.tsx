@@ -278,6 +278,7 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPl
               key={hand.handId}
               hand={hand}
               isActive={isCurrentPlayer && hand.handId === activeHandId}
+              cardSkin={player.cardSkin}
             />
           ))}
         </div>

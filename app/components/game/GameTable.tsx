@@ -6,6 +6,8 @@ import { BettingControls } from "./BettingControls";
 import { ActionControls } from "./ActionControls";
 import { ShoeIndicator } from "./ShoeIndicator";
 import { Countdown } from "~/components/ui/Countdown";
+import { useAuth } from "~/lib/AuthContext";
+import { tableBgClass } from "~/lib/tableBgs";
 
 const ACTIVE_PHASES: GameState["phase"][] = [
   "betting",
@@ -44,6 +46,7 @@ export function GameTable({
   chatUnreadCount = 0,
   onChatToggle,
 }: GameTableProps) {
+  const { user } = useAuth();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const self = state.players.find((p) => p.playerId === selfPlayerId);
   const isSelfTurn = state.activePlayerId === selfPlayerId;
@@ -62,7 +65,7 @@ export function GameTable({
 
   return (
     <div
-      className="relative flex flex-col min-h-screen felt-bg"
+      className={`relative flex flex-col min-h-screen ${tableBgClass(user?.equippedTableBg)}`}
     >
       {/* Leave-table confirmation modal */}
       {showLeaveConfirm && (
@@ -164,7 +167,7 @@ export function GameTable({
 
       {/* Dealer area */}
       <div className="flex justify-center py-8">
-        <DealerZone hand={state.dealerHand} />
+        <DealerZone hand={state.dealerHand} cardSkin={state.dealerCardSkin} />
       </div>
 
       {/* Divider line */}
