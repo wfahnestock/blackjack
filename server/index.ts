@@ -19,6 +19,9 @@ import * as achievementRepo from "./db/AchievementRepository.js";
 import * as achievementEngine from "./achievements/AchievementEngine.js";
 import { ACHIEVEMENTS, ACHIEVEMENT_MAP } from "./achievements/definitions.js";
 import { NAME_EFFECT_KEYS, NAME_EFFECTS } from "../app/lib/nameEffects.js";
+import * as skinsRepo from "./db/SkinsRepository.js";
+import { CARD_SKIN_KEYS, CARD_SKINS } from "../app/lib/cardSkins.js";
+import { TABLE_BG_KEYS, TABLE_BGS } from "../app/lib/tableBgs.js";
 
 // ─── Express ────────────────────────────────────────────────────────────────
 
@@ -104,6 +107,9 @@ app.post("/api/auth/register", async (req, res) => {
         chips: player.chips,
         lastDailyClaimed: player.lastDailyClaimed,
         roles: playerRoles,
+        equippedNameEffect: player.equippedNameEffect ?? null,
+        equippedCardSkin:   player.equippedCardSkin   ?? null,
+        equippedTableBg:    player.equippedTableBg    ?? null,
       },
     });
   } catch (err) {
@@ -145,6 +151,9 @@ app.post("/api/auth/login", async (req, res) => {
         chips: player.chips,
         lastDailyClaimed: player.lastDailyClaimed,
         roles: playerRoles,
+        equippedNameEffect: player.equippedNameEffect ?? null,
+        equippedCardSkin:   player.equippedCardSkin   ?? null,
+        equippedTableBg:    player.equippedTableBg    ?? null,
       },
     });
   } catch (err) {
@@ -379,6 +388,146 @@ app.put("/api/vanity/name-effects/equip", requireAuth, async (req: AuthedRequest
   }
 });
 
+// ─── Skin Endpoints ───────────────────────────────────────────────────────────
+
+app.get("/api/vanity/card-skins", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const [owned, equipped] = await Promise.all([
+      skinsRepo.getOwnedSkins(req.playerId!, "card"),
+      skinsRepo.getEquippedSkin(req.playerId!, "card"),
+    ]);
+    res.json({ catalog: CARD_SKINS, owned, equipped });
+  } catch (err) {
+    console.error("[vanity/card-skins]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/api/vanity/card-skins/purchase", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const { skinKey } = req.body as { skinKey?: string };
+    if (!skinKey || !CARD_SKIN_KEYS.has(skinKey) || skinKey === "default") {
+      res.status(400).json({ error: "Invalid skin" });
+      return;
+    }
+    const skin = CARD_SKINS.find((s) => s.key === skinKey)!;
+    if (skin.requiredRole) {
+      res.status(400).json({ error: "This skin cannot be purchased" });
+      return;
+    }
+    const result = await skinsRepo.purchaseSkin(req.playerId!, "card", skinKey, skin.cost);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ chips: result.chips });
+  } catch (err) {
+    console.error("[vanity/card-skins/purchase]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.put("/api/vanity/card-skins/equip", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const { skinKey } = req.body as { skinKey?: string | null };
+    const key = !skinKey || skinKey === "default" ? null : skinKey;
+    if (key !== null) {
+      if (!CARD_SKIN_KEYS.has(key)) {
+        res.status(400).json({ error: "Invalid skin" });
+        return;
+      }
+      const skin = CARD_SKINS.find((s) => s.key === key)!;
+      if (skin.requiredRole) {
+        const playerRoles = await roleRepo.getPlayerRoles(req.playerId!);
+        if (!playerRoles.some((r) => r.name === skin.requiredRole)) {
+          res.status(403).json({ error: "You don't have access to this skin" });
+          return;
+        }
+      } else {
+        const owned = await skinsRepo.getOwnedSkins(req.playerId!, "card");
+        if (!owned.includes(key)) {
+          res.status(403).json({ error: "Skin not owned" });
+          return;
+        }
+      }
+    }
+    await skinsRepo.equipSkin(req.playerId!, "card", key);
+    res.json({ skinKey: key });
+  } catch (err) {
+    console.error("[vanity/card-skins/equip]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.get("/api/vanity/table-bgs", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const [owned, equipped] = await Promise.all([
+      skinsRepo.getOwnedSkins(req.playerId!, "table-bg"),
+      skinsRepo.getEquippedSkin(req.playerId!, "table-bg"),
+    ]);
+    res.json({ catalog: TABLE_BGS, owned, equipped });
+  } catch (err) {
+    console.error("[vanity/table-bgs]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.post("/api/vanity/table-bgs/purchase", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const { skinKey } = req.body as { skinKey?: string };
+    if (!skinKey || !TABLE_BG_KEYS.has(skinKey) || skinKey === "default") {
+      res.status(400).json({ error: "Invalid background" });
+      return;
+    }
+    const bg = TABLE_BGS.find((b) => b.key === skinKey)!;
+    if (bg.requiredRole) {
+      res.status(400).json({ error: "This background cannot be purchased" });
+      return;
+    }
+    const result = await skinsRepo.purchaseSkin(req.playerId!, "table-bg", skinKey, bg.cost);
+    if (!result.success) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({ chips: result.chips });
+  } catch (err) {
+    console.error("[vanity/table-bgs/purchase]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+app.put("/api/vanity/table-bgs/equip", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const { skinKey } = req.body as { skinKey?: string | null };
+    const key = !skinKey || skinKey === "default" ? null : skinKey;
+    if (key !== null) {
+      if (!TABLE_BG_KEYS.has(key)) {
+        res.status(400).json({ error: "Invalid background" });
+        return;
+      }
+      const bg = TABLE_BGS.find((b) => b.key === key)!;
+      if (bg.requiredRole) {
+        const playerRoles = await roleRepo.getPlayerRoles(req.playerId!);
+        if (!playerRoles.some((r) => r.name === bg.requiredRole)) {
+          res.status(403).json({ error: "You don't have access to this background" });
+          return;
+        }
+      } else {
+        const owned = await skinsRepo.getOwnedSkins(req.playerId!, "table-bg");
+        if (!owned.includes(key)) {
+          res.status(403).json({ error: "Background not owned" });
+          return;
+        }
+      }
+    }
+    await skinsRepo.equipSkin(req.playerId!, "table-bg", key);
+    res.json({ skinKey: key });
+  } catch (err) {
+    console.error("[vanity/table-bgs/equip]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 // ─── Socket.io ───────────────────────────────────────────────────────────────
 
 type SocketData = { playerId: string; username: string };
@@ -485,7 +634,8 @@ io.on("connection", (socket: AppSocket) => {
         player.avatarColor,
         player.chips,
         playerRoles,
-        player.equippedNameEffect ?? null
+        player.equippedNameEffect ?? null,
+        player.equippedCardSkin   ?? null
       );
       if (!result.success) {
         rooms.delete(code);
@@ -528,7 +678,8 @@ io.on("connection", (socket: AppSocket) => {
         player.avatarColor,
         player.chips,
         playerRoles,
-        player.equippedNameEffect ?? null
+        player.equippedNameEffect ?? null,
+        player.equippedCardSkin   ?? null
       );
       if (!result.success) {
         callback({ success: false, error: result.error });
