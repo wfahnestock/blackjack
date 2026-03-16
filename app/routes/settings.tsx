@@ -338,7 +338,10 @@ export default function Settings() {
                     `}
                   >
                     {/* Effect name preview */}
-                    <p className={`text-sm font-bold truncate ${nameEffectClass(effect.key) || "text-white"}`}>
+                    <p
+                      className={`text-sm font-bold truncate ${nameEffectClass(effect.key) || "text-white"}`}
+                      style={nameEffectClass(effect.key) ? { overflow: "clip", overflowClipMargin: "30px" } : undefined}
+                    >
                       {effect.label}
                     </p>
 

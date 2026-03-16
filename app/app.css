@@ -101,8 +101,8 @@ body {
 }
 
 @keyframes ne-glow-pulse {
-  0%, 100% { text-shadow: 0 0 6px #22d3ee80, 0 0 12px #22d3ee40; }
-  50%       { text-shadow: 0 0 12px #22d3ee, 0 0 28px #22d3ee80, 0 0 48px #22d3ee30; }
+  0%, 100% { text-shadow: 0 0 4px #22d3ee80, 0 0 8px #22d3ee40; }
+  50%       { text-shadow: 0 0 8px #22d3ee, 0 0 16px #22d3ee80, 0 0 24px #22d3ee30; }
 }
 
 /* Gold */
@@ -117,12 +117,66 @@ body {
 
 /* Fire */
 .ne-fire {
-  background-image: linear-gradient(90deg, #b91c1c 0%, #ef4444 20%, #f97316 40%, #ef4444 65%, #dc2626 85%, #b91c1c 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: ne-shimmer 1.6s linear infinite;
+  color: #ef4444;
+  animation: ne-flame 1.6s ease-in-out infinite;
+}
+
+@keyframes ne-flame {
+  0% {
+    text-shadow:
+      0 0 4px #ff9a00,
+      0 -2px 6px #ff6a00,
+      0 -4px 10px #ff2a00,
+      0 -8px 14px #cc0000;
+  }
+
+  15% {
+    text-shadow:
+      0 0 5px #ffb347,
+      -1px -3px 7px #ff7a00,
+      1px -6px 12px #ff3300,
+      0 -10px 16px #b30000;
+  }
+
+  30% {
+    text-shadow:
+      0 0 4px #ff9a00,
+      1px -2px 6px #ff5a00,
+      -1px -5px 11px #ff2200,
+      0 -9px 15px #990000;
+  }
+
+  50% {
+    text-shadow:
+      0 0 6px #ffc04d,
+      -1px -3px 8px #ff6a00,
+      1px -7px 13px #ff3000,
+      0 -11px 18px #b00000;
+  }
+
+  70% {
+    text-shadow:
+      0 0 4px #ff9a00,
+      1px -2px 6px #ff4a00,
+      -1px -5px 10px #ff1a00,
+      0 -8px 14px #880000;
+  }
+
+  85% {
+    text-shadow:
+      0 0 6px #ffd27a,
+      -1px -4px 8px #ff7a00,
+      1px -6px 12px #ff3300,
+      0 -10px 17px #aa0000;
+  }
+
+  100% {
+    text-shadow:
+      0 0 4px #ff9a00,
+      0 -2px 6px #ff6a00,
+      0 -4px 10px #ff2a00,
+      0 -8px 14px #cc0000;
+  }
 }
 
 /* Ocean */

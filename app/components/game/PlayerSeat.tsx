@@ -250,7 +250,10 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPl
           )}
         </div>
         <div className="flex flex-col min-w-0 text-left">
-          <span className="text-sm font-semibold truncate max-w-[80px]">
+          <span
+            className="text-sm font-semibold truncate max-w-[80px]"
+            style={player.nameEffect ? { overflow: "clip", overflowClipMargin: "30px" } : undefined}
+          >
             <DisplayName
               displayName={player.displayName}
               nameEffect={player.nameEffect}
