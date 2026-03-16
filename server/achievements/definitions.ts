@@ -226,7 +226,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     id: "miracle_draw",
     name: "Miracle Draw",
     description: "Hit exactly to 21 using five cards.",
-    icon: "fa-hand-holding-magic",
+    icon: "fa-wand-sparkles",
     category: "gambler",
     check: ({ hand, result }) =>
       isWin(result.result) &&
