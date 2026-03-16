@@ -139,6 +139,7 @@ export class GameStateMachine {
       roundNumber: 0,
       settings,
       hiLoCount: null,
+      dealerCardSkin: null,
     };
   }
 
