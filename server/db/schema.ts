@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, integer, date, timestamp, boolean, primaryKey } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, integer, date, timestamp, boolean, primaryKey, jsonb } from "drizzle-orm/pg-core";
 
 
 export const players = pgTable("players", {
@@ -30,6 +30,7 @@ export const playerStats = pgTable("player_stats", {
   splitsMade: integer("splits_made").notNull().default(0),
   doublesMade: integer("doubles_made").notNull().default(0),
   timesBusted: integer("times_busted").notNull().default(0),
+  achievementProgress: jsonb("achievement_progress").notNull().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -78,6 +79,14 @@ export const playerRoles = pgTable("player_roles", {
  * The effect catalog is defined in app/lib/nameEffects.ts — no DB table needed
  * for the catalog itself.
  */
+export const playerAchievements = pgTable("player_achievements", {
+  playerId:      uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+  achievementId: varchar("achievement_id", { length: 50 }).notNull(),
+  unlockedAt:    timestamp("unlocked_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.playerId, t.achievementId] }),
+}));
+
 export const playerOwnedEffects = pgTable("player_owned_effects", {
   playerId:   uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
   effectKey:  varchar("effect_key", { length: 30 }).notNull(),
@@ -93,3 +102,4 @@ export type ChatMessageRow          = typeof chatMessages.$inferSelect;
 export type Role                    = typeof roles.$inferSelect;
 export type PlayerRoleRow           = typeof playerRoles.$inferSelect;
 export type PlayerOwnedEffectRow    = typeof playerOwnedEffects.$inferSelect;
+export type PlayerAchievementRow    = typeof playerAchievements.$inferSelect;

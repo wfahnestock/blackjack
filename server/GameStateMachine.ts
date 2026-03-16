@@ -9,18 +9,21 @@ import type {
   RoundResult,
   HandResult,
   GameSettings,
+  ActionRecord,
 } from "../app/lib/types.js";
 import {
   DEFAULT_SETTINGS,
   HILO_VALUES,
   BLACKJACK_PAYOUT,
   INSURANCE_PAYOUT,
+  RANK_VALUES,
 } from "../app/lib/constants.js";
 import { Deck } from "./Deck.js";
 import {
   getBestValue,
   isBlackjack,
   isBust,
+  isSoft,
   canSplit,
   canDouble,
   dealerShouldHit,
@@ -37,7 +40,41 @@ function makeHand(bet = 0): Hand {
     result: null,
     insuranceBet: 0,
     splitFromHandId: null,
+    actionHistory: [],
   };
+}
+
+/** Builds an ActionRecord snapshot at the moment a player decision is made. */
+function recordAction(
+  action: ActionRecord["action"],
+  hand: Hand,
+  dealerUpcard: Card
+): void {
+  const cards = hand.cards;
+  const handValueBefore = getBestValue(cards);
+  const isSoftBefore = isSoft(cards);
+
+  // Detect pair: exactly 2 cards with equal point value
+  let isPairBefore = false;
+  let pairRank: ActionRecord["pairRank"] = null;
+  if (cards.length === 2) {
+    const v0 = RANK_VALUES[cards[0].rank][0];
+    const v1 = RANK_VALUES[cards[1].rank][0];
+    if (v0 === v1) {
+      isPairBefore = true;
+      pairRank = cards[0].rank;
+    }
+  }
+
+  hand.actionHistory.push({
+    action,
+    handValueBefore,
+    isSoftBefore,
+    isPairBefore,
+    pairRank,
+    dealerUpcard: dealerUpcard.rank,
+    cardCountBefore: cards.length,
+  });
 }
 
 type HandResolution = { result: HandResult; payoutMultiplier: number };
@@ -399,6 +436,14 @@ export class GameStateMachine {
     this.startPlayerTurn();
   }
 
+  private getDealerUpcard(): Card {
+    return (
+      this.state.dealerHand.cards.find((c) => !c.faceDown) ??
+      this.state.dealerHand.cards[0] ??
+      ({ rank: "2", suit: "spades", faceDown: false } as Card)
+    );
+  }
+
   handleHit(playerId: string, handId: string): void {
     if (this.state.phase !== "player-turn") return;
     if (this.state.activePlayerId !== playerId || this.state.activeHandId !== handId) return;
@@ -407,6 +452,8 @@ export class GameStateMachine {
     if (!player) return;
     const hand = player.hands.find((h) => h.handId === handId);
     if (!hand || hand.stood || hand.busted) return;
+
+    recordAction("hit", hand, this.getDealerUpcard());
 
     const card = this.deck.deal();
     this.hiLoCount += HILO_VALUES[card.rank];
@@ -452,6 +499,7 @@ export class GameStateMachine {
     const hand = player.hands.find((h) => h.handId === handId);
     if (!hand || hand.busted) return;
 
+    recordAction("stand", hand, this.getDealerUpcard());
     hand.stood = true;
     this.broadcast("state:hand-updated", { playerId, hand });
     this.advanceTurn();
@@ -466,6 +514,8 @@ export class GameStateMachine {
     const hand = player.hands.find((h) => h.handId === handId);
     if (!hand || !canDouble(hand)) return;
     if (player.chips < hand.bet) return; // not enough chips
+
+    recordAction("double", hand, this.getDealerUpcard());
 
     // Deduct additional bet
     player.chips -= hand.bet;
@@ -501,6 +551,8 @@ export class GameStateMachine {
 
     if (!canSplit(hand, splitCount)) return;
     if (player.chips < hand.bet) return;
+
+    recordAction("split", hand, this.getDealerUpcard());
 
     // Deduct chips for the new hand
     player.chips -= hand.bet;
