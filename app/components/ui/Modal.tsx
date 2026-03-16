@@ -30,7 +30,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
         if (e.target === overlayRef.current) onClose();
       }}
     >
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
         {title && (
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-100">{title}</h2>
