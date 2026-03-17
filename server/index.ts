@@ -192,6 +192,7 @@ app.get("/api/players/:id/profile", requireAuth, async (req: AuthedRequest, res)
       avatarColor: player.avatarColor,
       chips: player.chips,
       roles: playerRoles,
+      equippedNameEffect: player.equippedNameEffect ?? null,
       stats: stats ? {
         handsPlayed: stats.handsPlayed,
         handsWon: stats.handsWon,
