@@ -215,24 +215,80 @@ body {
   animation: ne-rainbow-cycle 3s linear infinite;
 }
 
-@keyframes ne-glitch {
-  /* Idle — plain green most of the time */
-  0%, 79%  { text-shadow: none; transform: none; }
-  /* First burst */
-  80%      { text-shadow: -2px 0 #ff0050, 2px 0 #00ffff; transform: translateX(-2px); }
-  81%      { text-shadow:  2px 0 #ff0050,-2px 0 #00ffff; transform: translateX( 2px); }
-  82%      { text-shadow: none; transform: none; }
-  /* Short pause then second micro-burst */
-  86%      { text-shadow:  2px 0 #ff0050,-1px 0 #00ffff; transform: translateX( 1px); }
-  87%      { text-shadow: -1px 0 #ff0050, 2px 0 #00ffff; transform: translateX(-1px); }
-  88%, 100%{ text-shadow: none; transform: none; }
+/* Horizontal squeeze/stretch of the whole name */
+@keyframes ne-glitch-p {
+  17% { --scale: .87; }
+  31% { --scale: 1.1; }
+  37% { --scale: 1.3; }
+  47% { --scale: .91; }
+  87% { --scale: 1;   }
+}
+
+/* Glitch slice — forward direction */
+@keyframes ne-glitch-a {
+  10%,30%,50%,70%,90% { --top: 0; --left: 0; }
+  0%   {                  --v-height: 15%;              }
+  20%  { --left:  .005;                                 }
+  40%  { --left:  .01;   --v-height: 20%; --top: 3;    }
+  60%  { --left:  .03;   --v-height: 25%; --top: 6;    }
+  80%  { --left:  .07;   --v-height: 5%;  --top: 8;    }
+  100% { --left:  .083;  --v-height: 30%; --top: 1;    }
+}
+
+/* Glitch slice — reverse direction */
+@keyframes ne-glitch-b {
+  10%,30%,50%,70%,90% { --top: 0; --left: 0; }
+  0%   {                  --v-height: 15%; --top: 10;   }
+  20%  { --left: -.005;                                 }
+  40%  { --left: -.01;   --v-height: 17%; --top: 3;    }
+  60%  { --left: -.03;   --v-height: 35%; --top: 6;    }
+  80%  { --left: -.07;   --v-height: 5%;  --top: 8;    }
+  100% { --left: -.083;  --v-height: 30%; --top: 1;    }
 }
 
 /* Developer (role-locked, not purchasable) */
 .ne-glitch {
-  color: #4ade80; /* terminal green */
-  display: inline-block; /* required for transform on inline text */
-  animation: ne-glitch 4s infinite;
+  --bg: #111827; /* should loosely match the element's background; override via parent if needed */
+  position: relative;
+  display: inline-block;
+  color: #1af0dc;
+  transform: scaleX(var(--scale, 1));
+  animation: ne-glitch-p 11s infinite alternate;
+}
+
+.ne-glitch::before,
+.ne-glitch::after {
+  --top:      0;
+  --left:     0;
+  --v-height: 30%;
+  /* Simplified: --f-size cancels in the original formula, so --t-cut = --top * 10% */
+  --t-cut: calc(var(--top) * 10%);
+  --b-cut: calc(var(--t-cut) + var(--v-height));
+
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  width: 100%;
+  left: 0;
+
+  transform: translateX(calc(var(--left) * 100%));
+  /* Prevents sub-pixel rounding artefacts on the slice edges */
+  filter: drop-shadow(0 0 transparent);
+
+  text-shadow:
+    calc(var(--left) * -3em) 0 .02em lime,
+    calc(var(--left) * -6em) 0 .02em #ff00e1;
+
+  background-color: var(--bg);
+  clip-path: polygon(0% var(--t-cut), 100% var(--t-cut), 100% var(--b-cut), 0% var(--b-cut));
+}
+
+.ne-glitch::before {
+  animation: ne-glitch-b 1.7s infinite alternate-reverse;
+}
+
+.ne-glitch::after {
+  animation: ne-glitch-a 3.1s infinite alternate;
 }
 
 /* ─── Card skins ─────────────────────────────────────────────────────────────
