@@ -562,6 +562,7 @@ io.use((socket, next) => {
 });
 
 const rooms = new Map<string, GameRoom>();
+const socketRoom = new Map<string, string>(); // socketId -> roomCode
 
 /** Broadcasts the current public room list to ALL connected sockets. */
 function broadcastRoomList() {
@@ -644,6 +645,7 @@ io.on("connection", (socket: AppSocket) => {
         return;
       }
 
+      socketRoom.set(socket.id, code);
       callback({ success: true, roomCode: code });
       console.log(`[server] room created: ${code} (by player: ${playerName}, id: ${playerId})`);
       broadcastRoomList();
@@ -686,6 +688,7 @@ io.on("connection", (socket: AppSocket) => {
         return;
       }
 
+      socketRoom.set(socket.id, code);
       callback({ success: true, state: room.state });
       console.log(`[server] player ${playerName} (id: ${playerId}) joined room: ${code}`);
       broadcastRoomList();
@@ -697,124 +700,97 @@ io.on("connection", (socket: AppSocket) => {
   });
 
   socket.on("room:leave", () => {
-    for (const [code, room] of rooms) {
-      if (socket.rooms.has(code)) {
-        room.removePlayer(socket.id, true);
-        console.log(`[server] player ${playerName} (id: ${playerId}) left room: ${code}`);
-        if (room.isEmpty) {
-          room.destroy();
-          rooms.delete(code);
-        }
-        broadcastRoomList();
-        break;
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    const room = rooms.get(code);
+    if (room) {
+      room.removePlayer(socket.id, true);
+      console.log(`[server] player ${playerName} (id: ${playerId}) left room: ${code}`);
+      if (room.isEmpty) {
+        room.destroy();
+        rooms.delete(code);
       }
+      broadcastRoomList();
     }
+    socketRoom.delete(socket.id);
   });
 
   socket.on("room:start", () => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleStart(socket.id);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleStart(socket.id);
   });
 
   socket.on("room:update-settings", (settings) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleUpdateSettings(socket.id, settings);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleUpdateSettings(socket.id, settings);
   });
 
   socket.on("game:place-bet", ({ amount }) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handlePlaceBet(socket.id, amount);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handlePlaceBet(socket.id, amount);
   });
 
   socket.on("game:hit", ({ handId }) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleHit(socket.id, handId);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleHit(socket.id, handId);
   });
 
   socket.on("game:stand", ({ handId }) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleStand(socket.id, handId);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleStand(socket.id, handId);
   });
 
   socket.on("game:double", ({ handId }) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleDouble(socket.id, handId);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleDouble(socket.id, handId);
   });
 
   socket.on("game:split", ({ handId }) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleSplit(socket.id, handId);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleSplit(socket.id, handId);
   });
 
   socket.on("chat:send", ({ message }) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleChatMessage(socket.id, message);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleChatMessage(socket.id, message);
   });
 
   socket.on("chat:remove_message", ({ messageId }) => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleRemoveMessage(socket.id, messageId);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleRemoveMessage(socket.id, messageId);
   });
 
   socket.on("chat:clear", () => {
-    for (const [, room] of rooms) {
-      if (socket.rooms.has(room.code)) {
-        room.handleClearChat(socket.id);
-        break;
-      }
-    }
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleClearChat(socket.id);
   });
 
   // Use "disconnecting" (not "disconnect") because socket.rooms is still populated at this point.
   // By the time "disconnect" fires, socket.rooms has already been cleared.
   socket.on("disconnecting", () => {
     console.log(`[server] disconnecting: ${socket.id}`);
-    for (const [code, room] of rooms) {
-      if (socket.rooms.has(code)) {
+    const code = socketRoom.get(socket.id);
+    if (code) {
+      const room = rooms.get(code);
+      if (room) {
         room.removePlayer(socket.id);
         if (room.isEmpty) {
           room.destroy();
           rooms.delete(code);
         }
         broadcastRoomList();
-        break;
       }
+      socketRoom.delete(socket.id);
     }
   });
 
