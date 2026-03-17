@@ -523,7 +523,7 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     id: "what",
     name: "What are you doing?",
     description: "Reach a hand total of 30 or higher.",
-    icon: "fa-skull-crossbones",
+    icon: "fa-question",
     category: "funny",
     check: ({ hand }) => getBestValue(hand.cards) >= 30,
   },
