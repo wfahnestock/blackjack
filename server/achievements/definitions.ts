@@ -518,6 +518,15 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     category: "funny",
     check: ({ progress }) => (progress.currentBustStreak ?? 0) >= 3,
   },
+
+  {
+    id: "what",
+    name: "What are you doing?",
+    description: "Reach a hand total of 30 or higher.",
+    icon: "fa-skull-crossbones",
+    category: "funny",
+    check: ({ hand }) => getBestValue(hand.cards) >= 30,
+  },
 ];
 
 export const ACHIEVEMENT_MAP = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
