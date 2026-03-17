@@ -19,11 +19,11 @@ interface DisplayNameProps {
  * Drop-in replacement for bare `{player.displayName}` text nodes wherever
  * the effect should show (player seats, chat, profile modals, leaderboard…).
  *
- * Priority: developer role → equipped vanity effect → plain text.
+ * Priority: equipped vanity effect → plain text.
  */
 export function DisplayName({ displayName, nameEffect, roles, className = "" }: DisplayNameProps) {
   const isDev = roles?.some((r) => DEVELOPER_ROLE_NAMES.has(r.name)) ?? false;
-  const effectClass = isDev ? "ne-glitch" : nameEffectClass(nameEffect);
+  const effectClass = nameEffectClass(nameEffect);
   // When a text-shadow animation is active, `overflow: hidden` (from Tailwind's
   // `truncate`) clips the shadows at the element boundary. Switching to
   // `overflow: clip` + `overflowClipMargin` preserves ellipsis/nowrap behaviour
