@@ -35,6 +35,9 @@ export function DisplayName({ displayName, nameEffect, roles, className = "" }: 
     <span
       className={[effectClass, className].filter(Boolean).join(" ")}
       style={overflowStyle}
+      // data-text mirrors the text content so the ne-glitch pseudo-elements can
+      // read it via content: attr(data-text). Harmless on all other effects.
+      data-text={displayName}
     >
       {displayName}
     </span>
