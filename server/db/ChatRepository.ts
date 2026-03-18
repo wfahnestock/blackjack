@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { db } from "./client.js";
 import { chatMessages } from "./schema.js";
 import type { ChatMessageRow } from "./schema.js";
@@ -27,9 +27,12 @@ export async function censorMessage(messageId: string): Promise<void> {
     .where(eq(chatMessages.id, messageId));
 }
 
-/** Deletes all messages in a room (moderator clear). */
+/** Soft-deletes all messages in a room by marking them censored (moderator clear). */
 export async function clearRoomMessages(roomCode: string): Promise<void> {
-  await db.delete(chatMessages).where(eq(chatMessages.roomCode, roomCode));
+  await db
+    .update(chatMessages)
+    .set({ censored: true })
+    .where(eq(chatMessages.roomCode, roomCode));
 }
 
 /**
@@ -43,7 +46,7 @@ export async function getRecentMessages(
   const rows = await db
     .select()
     .from(chatMessages)
-    .where(eq(chatMessages.roomCode, roomCode))
+    .where(and(eq(chatMessages.roomCode, roomCode), eq(chatMessages.censored, false)))
     .orderBy(desc(chatMessages.createdAt))
     .limit(limit);
 
