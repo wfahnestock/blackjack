@@ -215,6 +215,174 @@ body {
   animation: ne-rainbow-cycle 3s linear infinite;
 }
 
+/* Lightning */
+
+/*
+ * Base: dim, crisp, no glow — the name sits quietly like dead current.
+ * ::before — the arc layer: thin diagonal bands of bright text that flash
+ *             across/between letters at irregular intervals. Each flash is
+ *             sculpted via clip-path so only a narrow angled slice of a
+ *             luminous copy of the text is revealed, simulating an arc
+ *             jumping through the characters. The asymmetric text-shadow
+ *             hints at branching without adding DOM nodes.
+ * ::after  — the surge layer: the full text at near-white brightness,
+ *             normally invisible; bursts to opacity 1 for a single frame
+ *             on rare intervals, sometimes with a rapid stutter, to sell
+ *             the feel of a voltage spike.
+ * Timings (5.9 s arc, 4.1 s surge, 13.7 s base) are near-prime so the
+ * three cycles rarely align — keeping the pattern unpredictable.
+ */
+.ne-lightning {
+  position: relative;
+  display: inline-block;
+  color: #6bacc2;   /* dim, crisp, cool blue-gray — no glow */
+}
+
+.ne-lightning::before,
+.ne-lightning::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+}
+
+/* Arc layer — diagonal slashes of bright text crossing the name.
+ *
+ * Timing math (5.9 s cycle, 1 % = 59 ms):
+ *   Flash windows are 60–100 ms wide so they land on 4–6 frames at 60 fps
+ *   and are reliably visible.  The previous version used ~5 ms windows
+ *   (sub-frame) which were sampled only by chance.
+ *
+ * Polygon math: 4-vertex diagonal bands, 30–40 % of element height.
+ *   At a 16 px font that is ~5–6 px of visible bright slash — clearly
+ *   readable as an arc cutting across the letters.  All polygons share
+ *   the same vertex count so CSS can interpolate between them while
+ *   opacity is 0 (invisible morph between events). */
+.ne-lightning::before {
+  color: #ffffff;
+  text-shadow:
+    0 0 3px #ffffff,
+    0 0 10px #c0e4ff,
+    0 0 20px #70b8f8,
+    4px 0 8px #90ceff38,
+    -3px 2px 8px #5090d038;
+  opacity: 0;
+  will-change: opacity, clip-path;
+  animation: ne-lightning-arc 5.9s linear infinite;
+}
+
+@keyframes ne-lightning-arc {
+  /* ── Flash 1 · ~80 ms · mid diagonal, lower-left → upper-right ── */
+  /*    top edge: 0%→22 % left,  5 % right  (17 % slope)            */
+  /*    bottom:   0%→55 % left, 38 % right  → 33 % band height      */
+  0%,   8.46%  { opacity: 0; clip-path: polygon(0% 22%, 100%  5%, 100% 38%, 0% 55%); }
+  8.47%         { opacity: 1; }
+  9.83%         { opacity: 1; clip-path: polygon(0% 22%, 100%  5%, 100% 38%, 0% 55%); }
+  9.84%         { opacity: 0; }
+
+  /* ── Flash 2a · ~65 ms · steep slash from lower-left ── */
+  23.72%        { opacity: 0; clip-path: polygon(0% 52%, 100% 15%, 100% 48%, 0% 85%); }
+  23.73%        { opacity: 1; }
+  24.83%        { opacity: 1; clip-path: polygon(0% 52%, 100% 15%, 100% 48%, 0% 85%); }
+  24.84%        { opacity: 0; }
+
+  /* ── Flash 2b · ~55 ms · crackle repeat at slightly tighter angle ── */
+  26.52%        { opacity: 0; clip-path: polygon(5% 42%, 100% 12%, 100% 44%, 0% 74%); }
+  26.53%        { opacity: 0.85; }
+  27.46%        { opacity: 0.85; clip-path: polygon(5% 42%, 100% 12%, 100% 44%, 0% 74%); }
+  27.47%        { opacity: 0; }
+
+  /* ── Flash 3 · ~65 ms · top-of-text arc, nearly horizontal ── */
+  45.75%        { opacity: 0; clip-path: polygon(0%  0%, 100%  0%, 100% 32%, 0% 35%); }
+  45.76%        { opacity: 1; }
+  46.86%        { opacity: 1; clip-path: polygon(0%  0%, 100%  0%, 100% 32%, 0% 35%); }
+  46.87%        { opacity: 0; }
+
+  /* ── Flash 4 · three rapid pulses, opposite direction (upper-left → lower-right) ── */
+  61.01%        { opacity: 0; clip-path: polygon(0% 10%, 100% 38%, 100% 70%, 0% 42%); }
+  61.02%        { opacity: 1; }
+  61.86%        { opacity: 1; clip-path: polygon(0% 10%, 100% 38%, 100% 70%, 0% 42%); }
+  61.87%        { opacity: 0; }
+
+  63.21%        { opacity: 0; clip-path: polygon(0% 15%, 100% 44%, 100% 74%, 0% 45%); }
+  63.22%        { opacity: 0.8; }
+  63.90%        { opacity: 0.8; clip-path: polygon(0% 15%, 100% 44%, 100% 74%, 0% 45%); }
+  63.91%        { opacity: 0; }
+
+  64.91%        { opacity: 0; clip-path: polygon(0% 20%, 100% 50%, 100% 78%, 0% 48%); }
+  64.92%        { opacity: 0.6; }
+  65.42%        { opacity: 0.6; clip-path: polygon(0% 20%, 100% 50%, 100% 78%, 0% 48%); }
+  65.43%        { opacity: 0; }
+
+  /* ── Flash 5 · ~70 ms · wide central sweep, max drama ── */
+  84.74%        { opacity: 0; clip-path: polygon(0% 15%, 100%  2%, 100% 52%, 0% 65%); }
+  84.75%        { opacity: 1; }
+  85.93%        { opacity: 1; clip-path: polygon(0% 15%, 100%  2%, 100% 52%, 0% 65%); }
+  85.94%        { opacity: 0; }
+
+  100%          { opacity: 0; clip-path: polygon(0% 15%, 100%  2%, 100% 52%, 0% 65%); }
+}
+
+/* Surge layer — entire name blazes white like a voltage spike.
+ *
+ * Timing math (4.1 s cycle, 1 % = 41 ms):
+ *   Windows are 80–120 ms (2–3 % of cycle) — clearly visible flashes. */
+.ne-lightning::after {
+  color: #ffffff;
+  text-shadow:
+    0 0 4px #ffffff,
+    0 0 14px #d8eeff,
+    0 0 28px #96caff,
+    0 0 44px #3898e8;
+  opacity: 0;
+  will-change: opacity;
+  animation: ne-lightning-surge 4.1s linear infinite;
+}
+
+@keyframes ne-lightning-surge {
+  /* ── Surge 1 · ~120 ms · clean single flash ── */
+  0%,  15.84%  { opacity: 0; }
+  15.85%        { opacity: 1; }
+  18.78%        { opacity: 1; }
+  18.79%        { opacity: 0; }
+
+  /* ── Surge 2 · ~80 ms flash + ~50 ms dim afterglow ── */
+  41.45%        { opacity: 0; }
+  41.46%        { opacity: 1; }
+  43.41%        { opacity: 1; }
+  43.42%        { opacity: 0; }
+  47.06%        { opacity: 0; }
+  47.07%        { opacity: 0.4; }
+  48.29%        { opacity: 0.4; }
+  48.30%        { opacity: 0; }
+
+  /* ── Surge 3 · triple stutter — full, full, half-dim ── */
+  68.28%        { opacity: 0; }
+  68.29%        { opacity: 1; }
+  69.75%        { opacity: 1; }
+  69.76%        { opacity: 0; }
+
+  72.19%        { opacity: 0; }
+  72.20%        { opacity: 1; }
+  73.41%        { opacity: 1; }
+  73.42%        { opacity: 0; }
+
+  75.36%        { opacity: 0; }
+  75.37%        { opacity: 0.5; }
+  76.34%        { opacity: 0.5; }
+  76.35%        { opacity: 0; }
+
+  /* ── Surge 4 · ~100 ms · final pop ── */
+  92.67%        { opacity: 0; }
+  92.68%        { opacity: 1; }
+  95.12%        { opacity: 1; }
+  95.13%        { opacity: 0; }
+
+  100%          { opacity: 0; }
+}
+
 /* Horizontal squeeze/stretch of the whole name */
 @keyframes ne-glitch-p {
   17% { --scale: .87; }
@@ -330,7 +498,7 @@ body {
     rgba(255, 248, 180, 0.5) 60%,
     transparent
   );
-  animation: cs-gold-shimmer 2s ease-in-out infinite;
+  animation: cs-gold-shimmer 2.5s ease-in-out infinite;
   pointer-events: none;
 }
 .cs-face-gold .text-gray-900 {
@@ -424,6 +592,103 @@ body {
     #071419 4px, #071419 8px
   ) !important;
   border-color: #67e8f9 !important;
+}
+
+/* Obsidian */
+
+/*
+ * Face card: near-black volcanic glass (#0d0d11), no color anywhere.
+ *
+ * Surface texture:
+ *   A very faint corner gradient on ::before simulates the specular
+ *   highlight you see when ambient light grazes the edge of polished
+ *   glass — about 4 % opacity at its brightest, invisible from most
+ *   angles.  The inset box-shadow adds a single-pixel edge highlight
+ *   on the top/left (glass rim catching light) and a deeper shadow on
+ *   the bottom/right (the receding face of a dense material).
+ *
+ * Hover glow:
+ *   Uses transition (not animation) so it doesn't conflict with the
+ *   card-appear animation that lives on the same element.  box-shadow
+ *   transitions in at 0.18 s on hover-enter and out at 1.4 s on
+ *   hover-leave — snaps in quickly, lingers and fades like light
+ *   briefly catching the glass edge.  No bright colors anywhere.
+ *
+ * Text: suits and ranks use cool dim-white (#c4c4ce) for black suits,
+ *   muted dark burgundy (#a03030) for red — both non-bright.
+ */
+/*
+ * Hover glow uses transition, not animation, deliberately.
+ *
+ * The card element already carries `card-appear` which sets the `animation`
+ * shorthand.  If :hover also sets `animation`, the browser replaces the
+ * running animation name; when hover ends the name reverts to `card-appear`
+ * and the browser re-fires it from the start — replaying the deal animation.
+ *
+ * `transition` is an entirely separate CSS property; `card-appear` never
+ * touches it, so the two are orthogonal.  The glow snaps in quickly on
+ * hover-enter (0.18 s) and fades slowly on hover-leave (1.4 s), which
+ * reads as "the glass briefly catches light and holds a moment before
+ * settling back into the dark."
+ */
+.cs-face-obsidian {
+  position: relative !important;
+  overflow: hidden !important;
+  background: #0d0d11 !important;
+  border-color: #242428 !important;
+  box-shadow:
+    0 2px 8px #00000099,
+    inset 1px 1px 0 #ffffff09,
+    inset -1px -1px 0 #00000055 !important;
+  transition: box-shadow 1.4s ease-out;
+}
+
+/* Ambient corner reflection — light grazing the top-left glass edge */
+.cs-face-obsidian::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.05)  0%,
+    rgba(255, 255, 255, 0.018) 18%,
+    transparent                36%
+  );
+  pointer-events: none;
+}
+
+/* Hover: edge glow — fast in, slow out via asymmetric transitions above */
+.cs-face-obsidian:hover {
+  box-shadow:
+    0 3px 16px #000000bb,
+    0 0 0 1px #78788850,
+    0 0 14px #58586838,
+    inset 2px 2px 0 #ffffff1e,
+    inset -1px -1px 0 #00000055 !important;
+  transition: box-shadow 0.18s ease-out;
+}
+
+.cs-face-obsidian .text-gray-900 {
+  color: #c4c4ce !important;   /* cool dim-white — black suits */
+}
+.cs-face-obsidian .text-red-600 {
+  color: #a03030 !important;   /* muted dark burgundy — red suits */
+}
+
+/* Back: even deeper black, near-invisible diagonal texture */
+.cs-back-obsidian {
+  background-color: #090910 !important;
+  border-color: #1e1e26 !important;
+}
+.cs-back-obsidian > div {
+  /* Two near-identical near-blacks — the pattern exists only under close
+     inspection, suggesting density rather than decoration */
+  background-image: repeating-linear-gradient(
+    45deg,
+    #0f0f14 0px, #0f0f14 4px,
+    #090910 4px, #090910 8px
+  ) !important;
+  border-color: #2a2a34 !important;
 }
 
 /* ─── Table backgrounds ──────────────────────────────────────────────────────

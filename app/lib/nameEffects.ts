@@ -62,6 +62,12 @@ export const NAME_EFFECTS: NameEffectDef[] = [
     cost:        15_000,
   },
   {
+    key:         "lightning",
+    label:       "Lightning",
+    description: "Electric arcs flashing across dim, sharp text",
+    cost:        15_000,
+  },
+  {
     key:          "glitch",
     label:        "Glitch",
     description:  "Developer-exclusive glitch effect",
