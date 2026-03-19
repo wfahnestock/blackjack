@@ -35,13 +35,13 @@ export const NAME_EFFECTS: NameEffectDef[] = [
     key:         "fire",
     label:       "Fire",
     description: "Blazing red and orange",
-    cost:        8_000,
+    cost:        50_000,
   },
   {
     key:         "ocean",
     label:       "Ocean",
     description: "Cool flowing blue and teal",
-    cost:        8_000,
+    cost:        5_000,
   },
   {
     key:         "neon",
@@ -53,13 +53,13 @@ export const NAME_EFFECTS: NameEffectDef[] = [
     key:         "galaxy",
     label:       "Galaxy",
     description: "Purple and pink cosmos",
-    cost:        12_000,
+    cost:        6_000,
   },
   {
     key:         "rainbow",
     label:       "Rainbow",
     description: "Full-spectrum color cycle",
-    cost:        15_000,
+    cost:        6_000,
   },
   {
     key:         "lightning",

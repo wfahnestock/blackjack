@@ -30,31 +30,31 @@ export const CARD_SKINS: CardSkinDef[] = [
     key:         "gold",
     label:       "Gold",
     description: "Gilded deck with a warm golden finish",
-    cost:        60_000,
+    cost:        50_000,
   },
   {
     key:         "midnight",
     label:       "Midnight",
     description: "Deep navy cards with silver accents",
-    cost:        8_000,
+    cost:        5_000,
   },
   {
     key:         "rose",
     label:       "Rose",
     description: "Soft rose and blush tones",
-    cost:        8_000,
+    cost:        3_000,
   },
   {
     key:         "neon",
     label:       "Neon",
     description: "Electric cyan glow on dark slate",
-    cost:        12_000,
+    cost:        8_000,
   },
   {
     key:         "obsidian",
     label:       "Obsidian",
     description: "Polished volcanic glass — deep black with subtle edge reflections",
-    cost:        20_000,
+    cost:        10_000,
   },
 ];
 
