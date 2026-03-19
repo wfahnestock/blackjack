@@ -2,6 +2,9 @@ import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
 import { Server, type Socket } from "socket.io";
+import { existsSync } from "fs";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import type { DefaultEventsMap } from "socket.io";
 import { nanoid } from "nanoid";
 import type {
@@ -802,6 +805,19 @@ io.on("connection", (socket: AppSocket) => {
     callback(listing);
   });
 });
+
+// ─── Static Frontend (production) ────────────────────────────────────────────
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const clientBuild = join(__dirname, "../build/client");
+
+if (existsSync(clientBuild)) {
+  app.use(express.static(clientBuild));
+  app.get("*", (_req, res) => {
+    res.sendFile(join(clientBuild, "index.html"));
+  });
+  console.log(`[server] serving static files from ${clientBuild}`);
+}
 
 const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "0.0.0.0";
