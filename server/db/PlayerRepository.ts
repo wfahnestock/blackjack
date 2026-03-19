@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, ne } from "drizzle-orm";
 import { db } from "./client.js";
 import { players, playerStats } from "./schema.js";
 import type { Player, PlayerStats } from "./schema.js";
@@ -99,6 +99,7 @@ export async function getLeaderboard(
         value: players.chips,
       })
       .from(players)
+      .where(ne(players.id, "f2da41de-31af-4149-820a-fdd8635d1251")) // exclude dev account
       .orderBy(desc(players.chips))
       .limit(limit);
   }
