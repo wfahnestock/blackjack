@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   type ReactNode,
 } from "react";
@@ -32,6 +33,8 @@ interface AuthContextValue {
     password: string
   ) => Promise<void>;
   logout: () => void;
+  /** Silently refresh the JWT. Returns the new token, or null if refresh failed (triggers logout). */
+  refreshToken: () => Promise<string | null>;
   /** Update local chip/reward state after a daily claim or round end. */
   updateUserChips: (chips: number, lastDailyClaimed?: string | null) => void;
   /** Update local profile state after settings are saved. */
@@ -67,14 +70,14 @@ interface AuthApiResponse {
   player: ServerPlayerResponse;
 }
 
-async function apiFetch<T>(path: string, body: unknown, token?: string): Promise<T> {
+async function apiFetch<T>(path: string, body?: unknown, token?: string): Promise<T> {
   const res = await fetch(path, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify(body),
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
   const data = (await res.json()) as T & { error?: string };
   if (!res.ok) throw new Error((data as { error?: string }).error ?? "Request failed");
@@ -94,6 +97,19 @@ function serverPlayerToAuthUser(player: ServerPlayerResponse): AuthUser {
     equippedCardSkin:   player.equippedCardSkin   ?? null,
     equippedTableBg:    player.equippedTableBg    ?? null,
   };
+}
+
+/** Decode the `exp` (seconds) from a JWT payload without any crypto library. */
+function getTokenExpiry(token: string): number | null {
+  try {
+    const payloadB64 = token.split(".")[1];
+    if (!payloadB64) return null;
+    const json = atob(payloadB64.replace(/-/g, "+").replace(/_/g, "/"));
+    const payload = JSON.parse(json) as { exp?: number };
+    return payload.exp ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function loadStoredUser(): AuthUser | null {
@@ -126,6 +142,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(newToken);
     setUser(newUser);
   }
+
+  async function refreshToken(): Promise<string | null> {
+    const currentToken = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!currentToken) return null;
+    try {
+      const data = await apiFetch<AuthApiResponse>("/api/auth/refresh", undefined, currentToken);
+      storeSession(data.token, serverPlayerToAuthUser(data.player));
+      return data.token;
+    } catch {
+      // Refresh failed — token is unrecoverable, force logout
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_PLAYER_KEY);
+      setToken(null);
+      setUser(null);
+      return null;
+    }
+  }
+
+  // On mount: silently refresh if the stored token is expired or expiring within 24 hours.
+  useEffect(() => {
+    const storedToken = localStorage.getItem(AUTH_TOKEN_KEY);
+    if (!storedToken) return;
+    const exp = getTokenExpiry(storedToken);
+    if (exp === null) return;
+    const msUntilExpiry = exp * 1000 - Date.now();
+    if (msUntilExpiry < 24 * 60 * 60 * 1000) {
+      refreshToken();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function login(username: string, password: string): Promise<void> {
     const data = await apiFetch<AuthApiResponse>("/api/auth/login", { username, password });
@@ -194,7 +240,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserChips, updateUserProfile, updateEquippedEffect, updateEquippedCardSkin, updateEquippedTableBg }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, refreshToken, updateUserChips, updateUserProfile, updateEquippedEffect, updateEquippedCardSkin, updateEquippedTableBg }}>
       {children}
     </AuthContext.Provider>
   );

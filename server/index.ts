@@ -165,6 +165,46 @@ app.post("/api/auth/login", async (req, res) => {
   }
 });
 
+app.post("/api/auth/refresh", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader?.startsWith("Bearer ")) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    const payload = authService.decodeTokenLenient(authHeader.slice(7));
+    if (!payload) {
+      res.status(401).json({ error: "Invalid token" });
+      return;
+    }
+    const player = await playerRepo.findById(payload.playerId);
+    if (!player) {
+      res.status(401).json({ error: "Player not found" });
+      return;
+    }
+    const token = authService.signToken({ playerId: player.id, username: player.username });
+    const playerRoles = await roleRepo.getPlayerRoles(player.id);
+    res.json({
+      token,
+      player: {
+        id: player.id,
+        username: player.username,
+        displayName: player.displayName,
+        avatarColor: player.avatarColor,
+        chips: player.chips,
+        lastDailyClaimed: player.lastDailyClaimed,
+        roles: playerRoles,
+        equippedNameEffect: player.equippedNameEffect ?? null,
+        equippedCardSkin:   player.equippedCardSkin   ?? null,
+        equippedTableBg:    player.equippedTableBg    ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[refresh]", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
 app.post("/api/auth/daily-reward", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const result = await playerRepo.claimDailyReward(

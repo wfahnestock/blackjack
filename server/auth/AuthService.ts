@@ -28,3 +28,12 @@ export function verifyToken(token: string): TokenPayload | null {
     return null;
   }
 }
+
+/** Like verifyToken but accepts expired tokens — use only for the refresh endpoint. */
+export function decodeTokenLenient(token: string): TokenPayload | null {
+  try {
+    return jwt.verify(token, JWT_SECRET, { ignoreExpiration: true }) as TokenPayload;
+  } catch {
+    return null;
+  }
+}
