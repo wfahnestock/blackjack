@@ -73,6 +73,12 @@ export default function Lobby() {
     socket.emit("room:start");
   };
 
+  const handleLeave = () => {
+    socket.emit("room:leave");
+    clearGameState();
+    navigate("/");
+  };
+
   const handleUpdateSettings = (settings: Partial<GameSettings>) => {
     socket.emit("room:update-settings", settings);
   };
@@ -148,6 +154,16 @@ export default function Lobby() {
                 Waiting for the host to start the game...
               </p>
             )}
+
+            {/* Leave button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLeave}
+              className="w-full text-gray-500 hover:text-red-400"
+            >
+              Leave Room
+            </Button>
           </div>
 
           {/* Desktop chat sidebar */}
