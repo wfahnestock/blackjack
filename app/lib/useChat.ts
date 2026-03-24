@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { nanoid } from "nanoid";
 import type { ChatMessage } from "~/lib/types";
-import type { getSocket } from "~/lib/socket";
+import { cachedChatHistory, clearChatHistory, type getSocket } from "~/lib/socket";
 
 type AppSocket = ReturnType<typeof getSocket>;
 
@@ -29,6 +29,13 @@ export function useChat(socket: AppSocket): UseChatReturn {
   panelOpenRef.current = panelOpen;
 
   useEffect(() => {
+    // Drain any history that arrived before this hook mounted (race condition
+    // between room:join callback and lobby route mounting).
+    if (cachedChatHistory !== null) {
+      setMessages(cachedChatHistory);
+      clearChatHistory();
+    }
+
     function onHistory(history: ChatMessage[]) {
       setMessages(history);
     }
