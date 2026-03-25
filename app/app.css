@@ -691,6 +691,223 @@ body {
   border-color: #2a2a34 !important;
 }
 
+/* Void */
+
+/*
+ * Face card: near-pitch-black (#020209) with two animated star planes.
+ *
+ * ::before — far plane: tiny (0.5px) dim dots in a 120×100 tile, slow
+ *   north-east drift (32 s).  CSS custom properties --void-fx / --void-fy
+ *   are set by PlayingCard's onMouseMove handler and shift this plane by
+ *   ~2 px, giving the shallower parallax layer.
+ *
+ * ::after — near plane: brighter 1–1.5 px dots in a 180×140 tile, faster
+ *   south-west drift (20 s) for opposing motion depth cue.  --void-px /
+ *   --void-py shift this plane by ~5 px — visibly more than the far layer,
+ *   selling the sense of depth when the card moves.  Stars near the four
+ *   edges are slightly elongated (ellipse) to hint at gravitational lensing.
+ *
+ * Edge distortion: deep inset box-shadows — a black vignette plus a faint
+ *   violet tint — darken the border region so stars appear to bend and
+ *   vanish near the edges, like the card is a portal whose rim curves away.
+ *
+ * Text: dim slate (#9898b2) for black suits, deep unsaturated crimson for
+ *   red — both read fine up close but feel swallowed by the background.
+ */
+
+@keyframes cs-void-drift-far {
+  from { background-position: 0 0; }
+  to   { background-position: 120px 100px; }
+}
+@keyframes cs-void-drift-near {
+  from { background-position: 0 0; }
+  to   { background-position: -180px 140px; }
+}
+
+.cs-face-void {
+  position: relative !important;
+  overflow: hidden !important;
+  background: #020209 !important;
+  border-color: #0d0d22 !important;
+  box-shadow:
+    0 4px 14px #000000f0,
+    inset 0 0 20px 6px #00000090,
+    inset 0 0 10px 2px #08003850,
+    inset 0 0 0 1px #ffffff04 !important;
+  transition: box-shadow 1.2s ease-out;
+}
+.cs-face-void:hover {
+  box-shadow:
+    0 4px 20px #000000ff,
+    inset 0 0 26px 8px #000000a8,
+    inset 0 0 14px 3px #08003870,
+    inset 0 0 0 1px #ffffff07 !important;
+  transition: box-shadow 0.2s ease-out;
+}
+
+/* Far plane — tiny, dim, slow drift NE; shallow parallax shift on hover */
+.cs-face-void::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background-image:
+    radial-gradient(circle 0.5px at  8% 12%, rgba(255,255,255,0.40) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 31%  3%, rgba(255,255,255,0.32) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 55% 19%, rgba(220,225,255,0.35) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 78%  8%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 92% 27%, rgba(255,255,255,0.32) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 14% 38%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 42% 44%, rgba(210,215,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 67% 52%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 88% 61%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 23% 68%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 50% 76%, rgba(220,225,255,0.24) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 72% 84%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at  6% 88%, rgba(255,255,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 37% 93%, rgba(255,255,255,0.20) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 84% 96%, rgba(210,215,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 20% 25%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 60% 31%, rgba(220,225,255,0.24) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 95%  5%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at  3% 57%, rgba(255,255,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 75% 22%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 47% 59%, rgba(210,215,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 18% 82%, rgba(255,255,255,0.24) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 64% 70%, rgba(255,255,255,0.20) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 90% 82%, rgba(220,225,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 33% 47%, rgba(255,255,255,0.20) 0%, transparent 100%);
+  background-size: 120px 100px;
+  background-repeat: repeat;
+  animation: cs-void-drift-far 32s linear infinite;
+  transform: translate(var(--void-fx, 0px), var(--void-fy, 0px));
+  transition: transform 0.35s ease-out;
+  pointer-events: none;
+}
+
+/* Near plane — brighter, larger dots, faster SW drift; deeper parallax shift */
+.cs-face-void::after {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background-image:
+    radial-gradient(circle 1px    at 18% 15%, rgba(255,255,255,0.55) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 62%  8%, rgba(240,245,255,0.50) 0%, transparent 100%),
+    radial-gradient(circle 1.5px  at 40% 38%, rgba(255,255,255,0.48) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 83% 42%, rgba(220,230,255,0.45) 0%, transparent 100%),
+    radial-gradient(circle 1px    at  9% 55%, rgba(255,255,255,0.50) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 55% 62%, rgba(255,255,255,0.45) 0%, transparent 100%),
+    radial-gradient(circle 1.5px  at 28% 78%, rgba(240,245,255,0.42) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 73% 85%, rgba(255,255,255,0.45) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 35% 25%, rgba(255,255,255,0.48) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 75% 30%, rgba(240,245,255,0.44) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 20% 50%, rgba(255,255,255,0.46) 0%, transparent 100%),
+    radial-gradient(circle 1.5px  at 65% 72%, rgba(255,255,255,0.42) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 48% 90%, rgba(240,245,255,0.40) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 90% 20%, rgba(255,255,255,0.44) 0%, transparent 100%),
+    /* Elongated near the edges — gravitational lensing hint */
+    radial-gradient(ellipse 2px 1px at  3% 30%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(ellipse 2px 1px at 97% 70%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(ellipse 1px 2px at 50%  2%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(ellipse 1px 2px at 50% 98%, rgba(255,255,255,0.26) 0%, transparent 100%);
+  background-size: 180px 140px;
+  background-repeat: repeat;
+  animation: cs-void-drift-near 20s linear infinite;
+  transform: translate(var(--void-px, 0px), var(--void-py, 0px));
+  transition: transform 0.35s ease-out;
+  pointer-events: none;
+}
+
+.cs-face-void .text-gray-900 {
+  color: #9898b2 !important;   /* dim slate — barely legible in the dark */
+}
+.cs-face-void .text-red-600 {
+  color: #7a2020 !important;   /* deep unsaturated crimson */
+}
+
+/* Back: same void space, stars visible through a transparent inner frame */
+.cs-back-void {
+  position: relative !important;
+  overflow: hidden !important;
+  background: #01010a !important;
+  border-color: #0c0c20 !important;
+  box-shadow:
+    0 4px 14px #000000f0,
+    inset 0 0 20px 6px #00000090,
+    inset 0 0 10px 2px #08003850,
+    inset 0 0 0 1px #ffffff04 !important;
+}
+.cs-back-void::before {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background-image:
+    radial-gradient(circle 0.5px at  8% 12%, rgba(255,255,255,0.40) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 31%  3%, rgba(255,255,255,0.32) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 55% 19%, rgba(220,225,255,0.35) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 78%  8%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 92% 27%, rgba(255,255,255,0.32) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 14% 38%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 42% 44%, rgba(210,215,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 67% 52%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 88% 61%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 23% 68%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 50% 76%, rgba(220,225,255,0.24) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 72% 84%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at  6% 88%, rgba(255,255,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 37% 93%, rgba(255,255,255,0.20) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 84% 96%, rgba(210,215,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 20% 25%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 60% 31%, rgba(220,225,255,0.24) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 95%  5%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at  3% 57%, rgba(255,255,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 75% 22%, rgba(255,255,255,0.26) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 47% 59%, rgba(210,215,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 18% 82%, rgba(255,255,255,0.24) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 64% 70%, rgba(255,255,255,0.20) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 90% 82%, rgba(220,225,255,0.22) 0%, transparent 100%),
+    radial-gradient(circle 0.5px at 33% 47%, rgba(255,255,255,0.20) 0%, transparent 100%);
+  background-size: 120px 100px;
+  background-repeat: repeat;
+  animation: cs-void-drift-far 32s linear infinite;
+  pointer-events: none;
+}
+.cs-back-void::after {
+  content: '';
+  position: absolute;
+  inset: -20px;
+  background-image:
+    radial-gradient(circle 1px    at 18% 15%, rgba(255,255,255,0.55) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 62%  8%, rgba(240,245,255,0.50) 0%, transparent 100%),
+    radial-gradient(circle 1.5px  at 40% 38%, rgba(255,255,255,0.48) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 83% 42%, rgba(220,230,255,0.45) 0%, transparent 100%),
+    radial-gradient(circle 1px    at  9% 55%, rgba(255,255,255,0.50) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 55% 62%, rgba(255,255,255,0.45) 0%, transparent 100%),
+    radial-gradient(circle 1.5px  at 28% 78%, rgba(240,245,255,0.42) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 73% 85%, rgba(255,255,255,0.45) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 35% 25%, rgba(255,255,255,0.48) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 75% 30%, rgba(240,245,255,0.44) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 20% 50%, rgba(255,255,255,0.46) 0%, transparent 100%),
+    radial-gradient(circle 1.5px  at 65% 72%, rgba(255,255,255,0.42) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 48% 90%, rgba(240,245,255,0.40) 0%, transparent 100%),
+    radial-gradient(circle 1px    at 90% 20%, rgba(255,255,255,0.44) 0%, transparent 100%),
+    radial-gradient(ellipse 2px 1px at  3% 30%, rgba(255,255,255,0.30) 0%, transparent 100%),
+    radial-gradient(ellipse 2px 1px at 97% 70%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(ellipse 1px 2px at 50%  2%, rgba(255,255,255,0.28) 0%, transparent 100%),
+    radial-gradient(ellipse 1px 2px at 50% 98%, rgba(255,255,255,0.26) 0%, transparent 100%);
+  background-size: 180px 140px;
+  background-repeat: repeat;
+  animation: cs-void-drift-near 20s linear infinite;
+  pointer-events: none;
+}
+/* Inner frame: transparent so stars show through; faint dark-violet border */
+.cs-back-void > div {
+  position: relative;
+  z-index: 1;
+  background-image: none !important;
+  background-color: transparent !important;
+  border-color: #18183a !important;
+}
+
 /* ─── Table backgrounds ──────────────────────────────────────────────────────
    tb-{key} replaces felt-bg on the root game table div.
    Each uses the same radial-gradient + subtle texture pattern as felt-bg.

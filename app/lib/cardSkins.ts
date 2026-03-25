@@ -56,6 +56,12 @@ export const CARD_SKINS: CardSkinDef[] = [
     description: "Polished volcanic glass — deep black with subtle edge reflections",
     cost:        10_000,
   },
+  {
+    key:         "void",
+    label:       "Void",
+    description: "A window into deep space — stars drift slowly, edges bend toward nothing",
+    cost:        15_000,
+  },
 ];
 
 /** Set of all valid skin keys, for server-side validation. */

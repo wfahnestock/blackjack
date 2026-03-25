@@ -1,3 +1,4 @@
+import { useState, useCallback } from "react";
 import type { Card } from "~/lib/types";
 import { cardSkinFaceClass, cardSkinBackClass } from "~/lib/cardSkins";
 
@@ -20,6 +21,27 @@ const SUIT_SYMBOLS: Record<string, string> = {
 const RED_SUITS = new Set(["hearts", "diamonds"]);
 
 export function PlayingCard({ card, small = false, className = "", style, skin }: PlayingCardProps) {
+  const isVoid = skin === "void";
+  const [voidParallax, setVoidParallax] = useState<React.CSSProperties>({});
+
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isVoid) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const dx = ((e.clientX - rect.left) / rect.width  - 0.5) * 2;
+    const dy = ((e.clientY - rect.top)  / rect.height - 0.5) * 2;
+    setVoidParallax({
+      "--void-px": `${(dx * 5).toFixed(1)}px`,
+      "--void-py": `${(dy * 5).toFixed(1)}px`,
+      "--void-fx": `${(dx * 2.2).toFixed(1)}px`,
+      "--void-fy": `${(dy * 2.2).toFixed(1)}px`,
+    } as React.CSSProperties);
+  }, [isVoid]);
+
+  const handleMouseLeave = useCallback(() => {
+    if (!isVoid) return;
+    setVoidParallax({});
+  }, [isVoid]);
+
   if (card.faceDown) {
     return <CardBack small={small} className={className} style={style} skin={skin} />;
   }
@@ -39,7 +61,9 @@ export function PlayingCard({ card, small = false, className = "", style, skin }
         ${faceClass}
         ${className}
       `}
-      style={style}
+      style={{ ...style, ...voidParallax }}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
     >
       <div className={`font-bold leading-none ${text} ${isRed ? "text-red-600" : "text-gray-900"}`}>
         <div>{card.rank}</div>
