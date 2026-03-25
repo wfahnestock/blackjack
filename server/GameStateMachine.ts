@@ -28,6 +28,7 @@ import {
   canDouble,
   dealerShouldHit,
 } from "./HandEvaluator.js";
+import { DealerBehaviorEngine } from "./DealerBehavior.js";
 function makeHand(bet = 0): Hand {
   return {
     handId: randomUUID(),
@@ -117,6 +118,7 @@ export class GameStateMachine {
   private deck = new Deck();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private hiLoCount = 0;
+  private behavior = new DealerBehaviorEngine();
 
   state: GameState;
   onRoundEnd?: (players: Player[], results: RoundResult[]) => void;
@@ -624,9 +626,10 @@ export class GameStateMachine {
     }
 
     // Dealer draws
+    const bestPlayerValue = this.getBestActivePlayerValue();
     let delay = 300;
     const drawDealer = () => {
-      if (dealerShouldHit(this.state.dealerHand.cards)) {
+      if (this.behavior.shouldHit(this.state.dealerHand.cards, bestPlayerValue)) {
         const card = this.deck.deal();
         this.hiLoCount += HILO_VALUES[card.rank];
         this.state.dealerHand.cards.push(card);
@@ -683,6 +686,9 @@ export class GameStateMachine {
     this.broadcast("game:round-result", results);
     this.sync();
 
+    // Update streak/outcome tracking before persisting so data is current.
+    this.behavior.recordOutcome(results, getBestValue(this.state.dealerHand.cards));
+
     // Persist chips and stats asynchronously
     this.onRoundEnd?.(this.state.players, results);
 
@@ -707,6 +713,20 @@ export class GameStateMachine {
 
     // Go back to betting after 1.5s
     this.timer = setTimeout(() => this.startBetting(), 1500);
+  }
+
+  /** Returns the highest non-busted player hand value currently at the table. */
+  private getBestActivePlayerValue(): number {
+    let best = 0;
+    for (const player of this.state.players) {
+      for (const hand of player.hands) {
+        if (!hand.busted) {
+          const v = getBestValue(hand.cards);
+          if (v > best) best = v;
+        }
+      }
+    }
+    return best;
   }
 
   destroy(): void {
