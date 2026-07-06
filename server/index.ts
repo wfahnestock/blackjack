@@ -801,6 +801,12 @@ io.on("connection", (socket: AppSocket) => {
     rooms.get(code)?.handleSplit(socket.id, handId);
   });
 
+  socket.on("game:insurance", ({ take }) => {
+    const code = socketRoom.get(socket.id);
+    if (!code) return;
+    rooms.get(code)?.handleInsurance(socket.id, take);
+  });
+
   socket.on("chat:send", ({ message }) => {
     const code = socketRoom.get(socket.id);
     if (!code) return;

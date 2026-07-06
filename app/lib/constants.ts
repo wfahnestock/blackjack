@@ -83,6 +83,9 @@ export const MODERATOR_ROLE_NAMES = new Set(["moderator", "staff"]);
  */
 export const DEVELOPER_ROLE_NAMES = new Set(["developer"]);
 
+/** Seconds players have to accept or decline insurance when the dealer shows an Ace. */
+export const INSURANCE_TIMER_SECONDS = 12;
+
 export const MAX_SPLITS = 3;
 export const MAX_PLAYERS = 6;
 export const ROOM_CODE_LENGTH = 6;

@@ -232,6 +232,12 @@ export class GameRoom {
     this.machine.handleSplit(playerId, handId);
   }
 
+  handleInsurance(socketId: string, take: boolean): void {
+    const playerId = this.socketToPlayer.get(socketId);
+    if (!playerId) return;
+    this.machine.handleInsurance(playerId, take);
+  }
+
   handleChatMessage(socketId: string, rawMessage: string): void {
     const playerId = this.socketToPlayer.get(socketId);
     if (!playerId) return;

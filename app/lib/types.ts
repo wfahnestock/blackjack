@@ -129,6 +129,7 @@ export type GamePhase =
   | "lobby"
   | "betting"
   | "dealing"
+  | "insurance"
   | "player-turn"
   | "dealer-turn"
   | "payout"

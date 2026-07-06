@@ -98,8 +98,8 @@ export const DEFAULT_DEALER_CONFIG: DealerConfig = {
       // Above 18 → always stand (no entry needed).
       15: { hard: 0.90, soft: 0.90 }, // 10% chance of an early stand
       16: { hard: 0.85, soft: 0.85 }, // 15% chance of an early stand
-      17: { hard: 0.05, soft: 0.70 }, // hard 17: rarely hits; soft 17: usually hits
-      18: { hard: 0.10, soft: 0.10 }, // 10% chance of taking a risky extra card
+      17: { hard: 0.00, soft: 1.00 }, // hard 17: never hits; soft 17: always hits
+      18: { hard: 0.00, soft: 0.00 }, // Never hit hard OR soft 18
     },
   },
 

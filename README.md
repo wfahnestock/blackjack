@@ -5,9 +5,9 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
 ## ✨ Features
 
 ### 🎮 Game Features
-- **Classic Blackjack Gameplay**: Full implementation of standard blackjack rules
+- **Blackjack Gameplay**: Standard actions and payouts, with a dealer that plays *near*-standard rules (see [Game Rules](#-game-rules) for the intentional twist)
 - **Multiplayer Support**: Play with friends in real-time using room codes
-- **Advanced Actions**: Hit, stand, double down, split pairs, and insurance bets
+- **Advanced Actions**: Hit, stand, double down, split pairs, and insurance (offered when the dealer shows an Ace)
 - **Card Counting**: Optional Hi-Lo counting system with running count display
 - **Betting System**: Configurable chip denominations (5, 10, 25, 50, 100, 500)
 - **Hand Management**: Support for split hands and multiple simultaneous hands
@@ -28,7 +28,7 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
 ### 🔧 Technical Features
 - **Real-time Gameplay**: Socket.io powered multiplayer synchronization
 - **Sound Effects**: Interactive audio feedback for game actions
-- **Responsive Design**: Mobile-friendly interface with Tailwind CSS
+- **Responsive Layout**: Tailwind-based layout that adapts down to phone widths (best experienced on tablet or desktop)
 - **Type Safety**: Full TypeScript implementation on both client and server
 - **State Management**: Robust game state handling with phase management
 
@@ -58,16 +58,18 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
    
    This concurrently starts:
    - **Client**: React app at `http://localhost:5173`
-   - **Server**: WebSocket server at `http://localhost:3000`
+   - **Server**: WebSocket + API server at `http://localhost:3001`
 
 ### Available Scripts
 
 - `npm run dev` - Start both client and server in development mode
 - `npm run dev:app` - Start only the React client  
 - `npm run dev:server` - Start only the Node.js server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
+- `npm run build` - Build the production SPA (outputs to `build/client`)
+- `npm run start` - Start the custom server (serves an existing build)
+- `npm run serve` - Build then start the server (one-shot production run)
 - `npm run typecheck` - Run TypeScript type checking
+- `npm run simulate` - Run the blackjack EV/house-edge simulation
 
 ## 🎲 How to Play
 
@@ -80,14 +82,15 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
 ### Gameplay
 1. **Place Bets**: Each player places their initial bet using the chip interface
 2. **Receive Cards**: Dealer deals 2 cards to each player and 1 to themselves
-3. **Make Decisions**: Players take turns choosing their actions:
+3. **Insurance** (conditional): If the dealer's upcard is an Ace, each player may buy insurance for half their bet. It pays 2:1 if the dealer has blackjack.
+4. **Make Decisions**: Players take turns choosing their actions:
    - **Hit**: Take another card
    - **Stand**: Keep current hand
    - **Double Down**: Double bet and receive exactly one more card
    - **Split**: Split matching cards into two separate hands
-4. **Dealer Plays**: Dealer reveals their hole card and plays according to dealer rules
-5. **Payouts**: Winnings are distributed based on hand outcomes
-6. **Bankruptcy Insurance**: Optional table setting; Players who run out of chips will receive a free 100 chips to keep playing
+5. **Dealer Plays**: Dealer reveals their hole card and plays (see [Game Rules](#-game-rules))
+6. **Payouts**: Winnings are distributed based on hand outcomes
+7. **Bankruptcy Protection**: Optional table setting; players who run out of chips receive a free 100 chips to keep playing
 
 ### Card Counting (Optional)
 - Enable "Card Counting Hints" in room settings
@@ -97,7 +100,7 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
 ## 🏗️ Architecture
 
 ### Frontend (`/app`)
-- **React Router 7**: Modern routing and server-side rendering
+- **React Router 7**: Modern routing, configured in SPA mode (`ssr: false`, client-rendered)
 - **TypeScript** 
 - **Tailwind CSS**: Responsive design
 - **Component Architecture**:
@@ -114,7 +117,7 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
   - `GameStateMachine.ts` - Game flow and phase management  
   - `Deck.ts` - Card deck management and shuffling
   - `HandEvaluator.ts` - Blackjack hand value calculation
-  - `ChipLedger.ts` - Player chip balance management
+  - `DealerBehavior.ts` - Probabilistic dealer decision engine
 
 ### Data Flow
 1. **Client Actions**: Player interactions emit Socket.io events
@@ -124,27 +127,24 @@ A real-time multiplayer blackjack game built with React, TypeScript, and Socket.
 
 ## 🐳 Deployment
 
-### Docker Deployment
-```bash
-# Build the Docker image
-docker build -t blackjack-react .
+### Production Build (recommended)
 
-# Run the container
-docker run -p 3000:3000 blackjack-react
+The app runs in SPA mode and is served by the custom Express + Socket.io server, which hosts the built client, the REST API, and the WebSocket on a single origin/port.
+
+```bash
+# Build the SPA and start the server (serves build/client + /api + /socket.io on port 3001)
+npm run serve
 ```
 
-### Production Build
-```bash
-# Create production build
-npm run build
+Then point your tunnel/proxy (e.g. ngrok) at port `3001`. Everything is same-origin, so no extra CORS config is needed.
 
-# Start production server  
-npm run start
-```
+> **Note:** The included `Dockerfile` predates the current custom-server setup and will not work as-is (it omits dev deps and does not copy the `server/` source, but `start` runs the server via `tsx`). Fixing it requires either bundling the server or including `tsx` in the image — see the note in the summary before relying on Docker.
 
 ### Environment Variables
-- `CLIENT_ORIGIN`: CORS origin for client connections (default: `http://localhost:5173`)
-- `PORT`: Server port (default: 3000)
+- `DATABASE_URL`: PostgreSQL connection string (required)
+- `JWT_SECRET`: Secret for signing auth tokens (required in production)
+- `CLIENT_ORIGIN`: CORS origin for cross-origin clients (default: `http://localhost:5173`; unnecessary when same-origin)
+- `PORT`: Server port (default: `3001`)
 
 ## 🛠️ Development
 
@@ -156,11 +156,14 @@ npm run start
 │   ├── routes/            # Page routes
 │   └── welcome/           # Landing page
 ├── server/                # Node.js backend
-│   ├── ChipLedger.ts     # Player balance management
+│   ├── DealerBehavior.ts # Probabilistic dealer engine
 │   ├── Deck.ts           # Card deck implementation
 │   ├── GameRoom.ts       # Room and player management
 │   ├── GameStateMachine.ts # Game flow control
 │   ├── HandEvaluator.ts  # Blackjack logic
+│   ├── achievements/     # Achievement engine & definitions
+│   ├── auth/             # JWT auth service
+│   ├── db/               # Drizzle repositories & schema
 │   └── index.ts          # Server entry point
 ├── public/               # Static assets
 └── build/                # Production build output
@@ -174,15 +177,17 @@ npm run start
 
 ## 🎯 Game Rules
 
-This implementation follows standard blackjack rules:
+This implementation follows standard blackjack rules, with one **deliberate exception** noted under Dealer Rules:
 
 - **Objective**: Get hand value as close to 21 as possible without going over
 - **Card Values**: Numbers = face value, Face cards = 10, Aces = 1 or 11
-- **Dealer Rules**: Dealer must hit on soft 17 and below, stand on 17 and above  
+- **Dealer Rules**: The dealer targets standard strategy (hit on 16 and below, stand on 17 and above) but plays with slight, bounded randomness in the 15–18 range. This is intentional: a mathematically perfect dealer plus the house edge left basic-strategy players on constant losing streaks, so the dealer is tuned to feel fairer. The behavior lives in `server/DealerBehavior.ts` and can be reverted to a strictly deterministic dealer via its `enabled` master switch.
+- **Insurance**: Offered when the dealer's upcard is an Ace. Costs half the bet, pays 2:1 if the dealer has blackjack (no-peek: the hole card is still revealed on the dealer's turn).
 - **Blackjack**: 21 with first two cards pays 3:2
 - **Push**: Tie hands return the original bet
 - **Doubling**: Allowed on any first two cards
 - **Splitting**: Allowed on matching rank cards (limited to two splits - 3 hands total, per player)
+- **Five-Card Charlie**: Optional table setting; five cards without busting is an automatic win
 
 ## 🤝 Contributing
 

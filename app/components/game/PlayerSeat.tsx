@@ -218,10 +218,10 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPl
   return (
     <div
       className={`
-        relative flex flex-col items-center gap-2 p-3 rounded-2xl transition-all duration-300
+        relative flex flex-col items-center gap-2 p-2 sm:p-3 rounded-2xl transition-all duration-300
         ${isCurrentPlayer ? "bg-gray-900 ring-2 ring-emerald-500" : "bg-gray-900/50"}
         ${isDisconnected ? "opacity-50" : ""}
-        min-w-[120px]
+        min-w-[104px] sm:min-w-[120px]
       `}
     >
       {/* Avatar + Name */}

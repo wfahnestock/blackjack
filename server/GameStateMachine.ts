@@ -16,6 +16,7 @@ import {
   HILO_VALUES,
   BLACKJACK_PAYOUT,
   INSURANCE_PAYOUT,
+  INSURANCE_TIMER_SECONDS,
   RANK_VALUES,
 } from "../app/lib/constants.js";
 import { Deck } from "./Deck.js";
@@ -119,6 +120,9 @@ export class GameStateMachine {
   private timer: ReturnType<typeof setTimeout> | null = null;
   private hiLoCount = 0;
   private behavior = new DealerBehaviorEngine();
+  // Insurance offer tracking (only populated during the "insurance" phase).
+  private insuranceEligible = new Set<string>();
+  private insuranceResponses = new Set<string>();
 
   state: GameState;
   onRoundEnd?: (players: Player[], results: RoundResult[]) => void;
@@ -356,11 +360,92 @@ export class GameStateMachine {
     // Dealer hole card
     dealCard("dealer", undefined, undefined, true);
 
-    // After dealing animation, move to player-turn
+    // After dealing animation, offer insurance if the dealer shows an Ace,
+    // otherwise move straight to the player turns.
     setTimeout(() => {
       this.sync();
-      this.startPlayerTurn();
+      this.maybeOfferInsurance();
     }, delay + 200);
+  }
+
+  // ─── Phase: Insurance ────────────────────────────────────────────────────────
+
+  /**
+   * If the dealer's upcard is an Ace and at least one player can afford it,
+   * open an insurance window. Otherwise proceed directly to the player turns.
+   * This is a no-peek implementation: the dealer's hole card is still revealed
+   * at dealer-turn, and insurance is settled in startPayout (which already
+   * pays 2:1 on insuranceBet when the dealer has blackjack).
+   */
+  private maybeOfferInsurance(): void {
+    this.insuranceEligible = new Set();
+    this.insuranceResponses = new Set();
+
+    if (this.getDealerUpcard().rank !== "A") {
+      this.startPlayerTurn();
+      return;
+    }
+
+    for (const player of this.state.players) {
+      if (player.status === "disconnected") continue;
+      const hand = player.hands[0];
+      if (!hand || hand.bet <= 0) continue;
+      const cost = Math.floor(hand.bet / 2);
+      if (cost > 0 && player.chips >= cost) {
+        this.insuranceEligible.add(player.playerId);
+      }
+    }
+
+    if (this.insuranceEligible.size === 0) {
+      this.startPlayerTurn();
+      return;
+    }
+
+    this.startInsurance();
+  }
+
+  private startInsurance(): void {
+    this.clearTimer();
+    const endsAt = Date.now() + INSURANCE_TIMER_SECONDS * 1000;
+    this.phaseChange("insurance", endsAt, null, null);
+    this.sync();
+
+    this.timer = setTimeout(() => this.finishInsurance(), INSURANCE_TIMER_SECONDS * 1000);
+  }
+
+  handleInsurance(playerId: string, take: boolean): void {
+    if (this.state.phase !== "insurance") return;
+    if (!this.insuranceEligible.has(playerId)) return;
+    if (this.insuranceResponses.has(playerId)) return;
+
+    const player = this.getPlayer(playerId);
+    if (!player) return;
+    const hand = player.hands[0];
+    if (!hand) return;
+
+    if (take) {
+      const cost = Math.floor(hand.bet / 2);
+      if (cost > 0 && player.chips >= cost) {
+        player.chips -= cost;
+        hand.insuranceBet = cost;
+        this.broadcast("state:player-updated", player);
+      }
+    }
+
+    this.insuranceResponses.add(playerId);
+
+    // Advance as soon as every eligible player has answered.
+    const allResponded = [...this.insuranceEligible].every((id) =>
+      this.insuranceResponses.has(id)
+    );
+    if (allResponded) this.finishInsurance();
+  }
+
+  private finishInsurance(): void {
+    this.clearTimer();
+    this.insuranceEligible = new Set();
+    this.insuranceResponses = new Set();
+    this.startPlayerTurn();
   }
 
   // ─── Phase: Player Turn ─────────────────────────────────────────────────────
@@ -658,10 +743,13 @@ export class GameStateMachine {
       for (const hand of player.hands) {
         let payout = 0;
 
-        // Insurance resolution
+        // Insurance resolution. Payouts here use the total-return convention
+        // (stake is returned alongside winnings, since the stake was pre-deducted).
+        // A 2:1 insurance win therefore returns the stake plus INSURANCE_PAYOUT×stake,
+        // which exactly offsets losing the main bet to a dealer blackjack.
         if (hand.insuranceBet > 0) {
           if (dealerBJ) {
-            payout += hand.insuranceBet * INSURANCE_PAYOUT;
+            payout += hand.insuranceBet + hand.insuranceBet * INSURANCE_PAYOUT;
           }
           // Insurance bet already deducted; no refund if dealer doesn't have BJ
         }

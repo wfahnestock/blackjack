@@ -1,17 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { GameState } from "~/lib/types";
 import { DealerZone } from "./DealerZone";
 import { PlayerSeat } from "./PlayerSeat";
 import { BettingControls } from "./BettingControls";
 import { ActionControls } from "./ActionControls";
+import { InsuranceControls } from "./InsuranceControls";
 import { ShoeIndicator } from "./ShoeIndicator";
 import { Countdown } from "~/components/ui/Countdown";
 import { useAuth } from "~/lib/AuthContext";
 import { tableBgClass } from "~/lib/tableBgs";
+import { INSURANCE_TIMER_SECONDS } from "~/lib/constants";
 
 const ACTIVE_PHASES: GameState["phase"][] = [
   "betting",
   "dealing",
+  "insurance",
   "player-turn",
   "dealer-turn",
   "payout",
@@ -25,6 +28,7 @@ interface GameTableProps {
   onStand: (handId: string) => void;
   onDouble: (handId: string) => void;
   onSplit: (handId: string) => void;
+  onInsurance: (take: boolean) => void;
   onPlayerClick?: (playerId: string) => void;
   onLeave?: () => void;
   /** Number of unread chat messages; shows badge on the toggle button. */
@@ -41,6 +45,7 @@ export function GameTable({
   onStand,
   onDouble,
   onSplit,
+  onInsurance,
   onPlayerClick,
   onLeave,
   chatUnreadCount = 0,
@@ -48,12 +53,32 @@ export function GameTable({
 }: GameTableProps) {
   const { user } = useAuth();
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  // Tracks whether this client has already answered the current insurance offer,
+  // so the buttons hide immediately after clicking. Reset whenever we leave the phase.
+  const [insuranceAnswered, setInsuranceAnswered] = useState(false);
   const self = state.players.find((p) => p.playerId === selfPlayerId);
   const isSelfTurn = state.activePlayerId === selfPlayerId;
   const activeHand = isSelfTurn && self
     ? self.hands.find((h) => h.handId === state.activeHandId) ?? null
     : null;
   const isActiveMidRound = ACTIVE_PHASES.includes(state.phase);
+
+  useEffect(() => {
+    if (state.phase !== "insurance") setInsuranceAnswered(false);
+  }, [state.phase]);
+
+  // The self player can be offered insurance if they have a live bet they can
+  // half-cover and haven't already taken it or answered this round.
+  const insuranceHand = self?.hands[0];
+  const insuranceCost = insuranceHand ? Math.floor(insuranceHand.bet / 2) : 0;
+  const canInsure =
+    state.phase === "insurance" &&
+    !!insuranceHand &&
+    insuranceHand.bet > 0 &&
+    insuranceCost > 0 &&
+    (self?.chips ?? 0) >= insuranceCost &&
+    insuranceHand.insuranceBet === 0 &&
+    !insuranceAnswered;
 
   function handleLeaveClick() {
     if (isActiveMidRound) {
@@ -101,24 +126,27 @@ export function GameTable({
       )}
 
       {/* Top bar: shoe info + phase */}
-      <div className="grid grid-cols-3 items-center px-6 pt-4 pb-2">
+      <div className="grid grid-cols-3 items-center px-3 sm:px-6 pt-4 pb-2">
         {/* Left */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           {onLeave && (
             <button
               onClick={handleLeaveClick}
               title="Leave table"
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors text-sm"
+              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors text-sm flex-shrink-0"
             >
               <svg viewBox="0 0 16 16" className="w-3.5 h-3.5 fill-current">
                 <path d="M6.5 3.5 2 8l4.5 4.5M2 8h10M9 3.5h3.5a.5.5 0 0 1 .5.5v8a.5.5 0 0 1-.5.5H9" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-              Leave
+              <span className="hidden sm:inline">Leave</span>
             </button>
           )}
-          <div className="text-sm text-gray-500">
-            Room <span className="font-mono font-bold text-gray-300">{state.roomCode}</span>
-            {" · "}Round <span className="text-gray-400">{state.roundNumber}</span>
+          <div className="text-xs sm:text-sm text-gray-500 truncate">
+            <span className="hidden sm:inline">Room </span>
+            <span className="font-mono font-bold text-gray-300">{state.roomCode}</span>
+            <span className="hidden sm:inline">
+              {" · "}Round <span className="text-gray-400">{state.roundNumber}</span>
+            </span>
           </div>
         </div>
 
@@ -131,6 +159,8 @@ export function GameTable({
               totalSeconds={
                 state.phase === "betting"
                   ? state.settings.bettingTimerSeconds
+                  : state.phase === "insurance"
+                  ? INSURANCE_TIMER_SECONDS
                   : state.settings.turnTimerSeconds
               }
             />
@@ -166,16 +196,16 @@ export function GameTable({
       </div>
 
       {/* Dealer area */}
-      <div className="flex justify-center py-8">
+      <div className="flex justify-center py-4 sm:py-8">
         <DealerZone hand={state.dealerHand} cardSkin={state.dealerCardSkin} />
       </div>
 
       {/* Divider line */}
-      <div className="mx-8 border-t border-white/5" />
+      <div className="mx-4 sm:mx-8 border-t border-white/5" />
 
       {/* Player seats */}
-      <div className="flex-1 flex items-center justify-center px-4 py-6">
-        <div className="flex gap-4 flex-wrap justify-center">
+      <div className="flex-1 flex items-center justify-center px-2 sm:px-4 py-4 sm:py-6">
+        <div className="flex gap-2 sm:gap-4 flex-wrap justify-center">
           {state.players.map((player) => (
             <PlayerSeat
               key={player.playerId}
@@ -198,6 +228,16 @@ export function GameTable({
             settings={state.settings}
             onBet={onBet}
           />
+        )}
+        {state.phase === "insurance" && canInsure && (
+          <InsuranceControls
+            cost={insuranceCost}
+            onTake={() => { setInsuranceAnswered(true); onInsurance(true); }}
+            onDecline={() => { setInsuranceAnswered(true); onInsurance(false); }}
+          />
+        )}
+        {state.phase === "insurance" && !canInsure && (
+          <div className="text-sm text-gray-500 py-4">Waiting on insurance decisions...</div>
         )}
         {state.phase === "player-turn" && isSelfTurn && activeHand && self && (
           <ActionControls
@@ -222,6 +262,7 @@ function PhaseLabel({ phase }: { phase: GameState["phase"] }) {
     lobby: { text: "Lobby", color: "text-gray-500" },
     betting: { text: "Place Bets", color: "text-amber-400" },
     dealing: { text: "Dealing...", color: "text-blue-400" },
+    insurance: { text: "Insurance?", color: "text-cyan-400" },
     "player-turn": { text: "Player Turns", color: "text-emerald-400" },
     "dealer-turn": { text: "Dealer Turn", color: "text-purple-400" },
     payout: { text: "Payout", color: "text-yellow-400" },

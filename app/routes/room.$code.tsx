@@ -100,6 +100,7 @@ export default function Room() {
         onStand={(handId) => socket.emit("game:stand", { handId })}
         onDouble={(handId) => socket.emit("game:double", { handId })}
         onSplit={(handId) => socket.emit("game:split", { handId })}
+        onInsurance={(take) => socket.emit("game:insurance", { take })}
         onPlayerClick={setProfilePlayerId}
         onLeave={handleLeave}
         chatUnreadCount={chat.unreadCount}
