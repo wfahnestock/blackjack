@@ -1,5 +1,6 @@
 import { io, type Socket } from "socket.io-client";
 import type { ClientToServerEvents, ServerToClientEvents, GameState, ChatMessage } from "./types.js";
+import { NGROK_HEADER, NGROK_HEADER_VALUE } from "./ngrok.js";
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -22,6 +23,16 @@ export function getSocket(): AppSocket {
     socket = io({
       autoConnect: false,
       withCredentials: true,
+      // The Socket.io handshake starts as an XHR poll, which ngrok would answer
+      // with its HTML warning page and break the connection. Browsers can't set
+      // headers on the WebSocket upgrade itself, but the polling handshake that
+      // precedes it is what needs this.
+      extraHeaders: { [NGROK_HEADER]: NGROK_HEADER_VALUE },
+      transportOptions: {
+        polling: {
+          extraHeaders: { [NGROK_HEADER]: NGROK_HEADER_VALUE },
+        },
+      },
     });
     socket.on("state:sync", (s) => { cachedGameState = s; });
     socket.on("chat:history", (h) => { cachedChatHistory = h; });

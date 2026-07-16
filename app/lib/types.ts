@@ -14,6 +14,11 @@ export interface RoleInfo {
   color: string;
   /** FontAwesome solid icon class, e.g. "fa-gavel", "fa-wrench" */
   icon: string;
+  /**
+   * Admin permission keys this role grants (see app/lib/permissions.ts).
+   * Configurable per role at runtime; the server always re-checks these.
+   */
+  permissions: string[];
 }
 
 // ─── Primitives ───────────────────────────────────────────────────────────────

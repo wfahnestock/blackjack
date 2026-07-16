@@ -1,15 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { GameState } from "~/lib/types";
 import { DealerZone } from "./DealerZone";
 import { PlayerSeat } from "./PlayerSeat";
+import { TableFelt } from "./TableFelt";
 import { BettingControls } from "./BettingControls";
 import { ActionControls } from "./ActionControls";
 import { InsuranceControls } from "./InsuranceControls";
-import { ShoeIndicator } from "./ShoeIndicator";
+import { DealerFurniture } from "./DealerFurniture";
 import { Countdown } from "~/components/ui/Countdown";
 import { useAuth } from "~/lib/AuthContext";
 import { tableBgClass } from "~/lib/tableBgs";
+import { formatChips } from "~/lib/handUtils";
 import { INSURANCE_TIMER_SECONDS } from "~/lib/constants";
+import { computeHeroSeats } from "~/lib/seatLayout";
+import { useMediaQuery } from "~/lib/useMediaQuery";
+import { DealOriginContext } from "~/lib/dealOrigin";
 
 const ACTIVE_PHASES: GameState["phase"][] = [
   "betting",
@@ -52,11 +57,21 @@ export function GameTable({
   onChatToggle,
 }: GameTableProps) {
   const { user } = useAuth();
+  // Origin element (the shoe's dealing slot) that dealt cards fly out from.
+  const shoeSlotRef = useRef<HTMLDivElement>(null);
+  // Chips the player had when this game view opened, for the session NET readout.
+  const startChipsRef = useRef<number | null>(null);
+  // Casino arc on tablet/desktop; the flex-wrap row is the mobile fallback.
+  const isWide = useMediaQuery("(min-width: 640px)");
+  const seatPlacements = computeHeroSeats(state.players, selfPlayerId);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   // Tracks whether this client has already answered the current insurance offer,
   // so the buttons hide immediately after clicking. Reset whenever we leave the phase.
   const [insuranceAnswered, setInsuranceAnswered] = useState(false);
   const self = state.players.find((p) => p.playerId === selfPlayerId);
+  // Capture the opening bankroll once, then track session profit/loss from it.
+  if (self && startChipsRef.current === null) startChipsRef.current = self.chips;
+  const netChips = self && startChipsRef.current !== null ? self.chips - startChipsRef.current : 0;
   const isSelfTurn = state.activePlayerId === selfPlayerId;
   const activeHand = isSelfTurn && self
     ? self.hands.find((h) => h.handId === state.activeHandId) ?? null
@@ -125,8 +140,10 @@ export function GameTable({
         </div>
       )}
 
-      {/* Top bar: shoe info + phase */}
-      <div className="grid grid-cols-3 items-center px-3 sm:px-6 pt-4 pb-2">
+      {/* Top bar: shoe info + phase. Fixed height so the countdown ring, which
+          only renders in timed phases, can't grow/shrink the bar and shift the
+          vertically-centered table below it. */}
+      <div className="grid grid-cols-3 items-center px-3 sm:px-6 h-[72px] flex-shrink-0">
         {/* Left */}
         <div className="flex items-center gap-1.5 sm:gap-3 min-w-0">
           {onLeave && (
@@ -191,36 +208,112 @@ export function GameTable({
               )}
             </button>
           )}
-          <ShoeIndicator shoe={state.shoe} hiLoCount={state.hiLoCount} />
         </div>
       </div>
 
-      {/* Dealer area */}
-      <div className="flex justify-center py-4 sm:py-8">
-        <DealerZone hand={state.dealerHand} cardSkin={state.dealerCardSkin} />
-      </div>
+      {/* Table: casino arc on tablet+, stacked dealer + seat row on mobile */}
+      {isWide ? (
+        <div className="flex-1 flex items-center justify-center px-4 py-2 min-h-0">
+          <div
+            className="relative w-[96%] aspect-[12/5] mx-auto"
+            style={{ maxWidth: "min(1440px, calc((100vh - 226px) * 2.4))" }}
+          >
+           <DealOriginContext.Provider value={shoeSlotRef}>
+            <TableFelt className="absolute inset-0 h-full w-full" skin={user?.equippedTableBg} />
 
-      {/* Divider line */}
-      <div className="mx-4 sm:mx-8 border-t border-white/5" />
-
-      {/* Player seats */}
-      <div className="flex-1 flex items-center justify-center px-2 sm:px-4 py-4 sm:py-6">
-        <div className="flex gap-2 sm:gap-4 flex-wrap justify-center">
-          {state.players.map((player) => (
-            <PlayerSeat
-              key={player.playerId}
-              player={player}
-              activeHandId={state.activeHandId}
-              isCurrentPlayer={state.activePlayerId === player.playerId}
-              isSelf={player.playerId === selfPlayerId}
-              onPlayerClick={onPlayerClick}
+            <DealerFurniture
+              shoe={state.shoe}
+              hiLoCount={state.hiLoCount}
+              minBet={state.settings.minBet}
+              maxBet={state.settings.maxBet}
+              slotRef={shoeSlotRef}
             />
-          ))}
-        </div>
-      </div>
 
-      {/* Controls */}
-      <div className="flex justify-center pb-6 px-4">
+            {/* Dealer near the top-center of the felt */}
+            <div className="absolute left-1/2 -translate-x-1/2" style={{ top: "12%" }}>
+              <DealerZone hand={state.dealerHand} cardSkin={state.dealerCardSkin} />
+            </div>
+
+            {/* Player seats along the arc — hero (you) pinned to bottom-center */}
+            {seatPlacements.map(({ player, xPct, yPct, isSelf }) => (
+              <div
+                key={player.playerId}
+                className="absolute -translate-x-1/2 -translate-y-1/2 transition-[left,top] duration-500 ease-out"
+                style={{
+                  left: `${xPct}%`,
+                  top: `${yPct}%`,
+                  zIndex: state.activePlayerId === player.playerId ? 20 : 10,
+                }}
+              >
+                <PlayerSeat
+                  player={player}
+                  activeHandId={state.activeHandId}
+                  isCurrentPlayer={state.activePlayerId === player.playerId}
+                  isSelf={isSelf}
+                  onPlayerClick={onPlayerClick}
+                  compact
+                />
+              </div>
+            ))}
+           </DealOriginContext.Provider>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className="flex justify-center py-4">
+            <DealerZone hand={state.dealerHand} cardSkin={state.dealerCardSkin} />
+          </div>
+          <div className="mx-4 border-t border-white/5" />
+          <div className="flex-1 flex items-center justify-center px-2 py-4">
+            <div className="flex gap-2 flex-wrap justify-center">
+              {state.players.map((player) => (
+                <PlayerSeat
+                  key={player.playerId}
+                  player={player}
+                  activeHandId={state.activeHandId}
+                  isCurrentPlayer={state.activePlayerId === player.playerId}
+                  isSelf={player.playerId === selfPlayerId}
+                  onPlayerClick={onPlayerClick}
+                />
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Bankroll readout below the felt (reference layout) */}
+      {isWide && self && (
+        <div className="flex justify-center pb-2 flex-shrink-0">
+          <div className="flex items-center gap-2.5 px-5 py-2 rounded-full bg-gray-900/75 border border-gray-700/70 shadow-lg">
+            <span
+              className="w-7 h-7 rounded-full flex-shrink-0"
+              style={{
+                background:
+                  "repeating-conic-gradient(#caa14a 0deg, #caa14a 30deg, #f4e6bd 30deg, #f4e6bd 60deg)",
+                boxShadow:
+                  "rgba(255,255,255,0.3) 0 1px 0 inset, rgba(0,0,0,0.4) 0 -1px 0 inset, rgba(0,0,0,0.45) 0 2px 4px",
+                border: "1.5px solid rgba(0,0,0,0.3)",
+              }}
+            />
+            <span className="text-xs uppercase tracking-widest text-gray-400">Bankroll</span>
+            <span className="text-2xl font-bold text-yellow-400 tabular-nums leading-none">
+              {formatChips(self.chips)}
+            </span>
+            <span className="w-px h-7 bg-gray-700/70 mx-1" />
+            <span className="text-xs uppercase tracking-widest text-gray-400">Net</span>
+            <span
+              className={`text-2xl font-bold tabular-nums leading-none ${
+                netChips > 0 ? "text-emerald-400" : netChips < 0 ? "text-red-400" : "text-gray-400"
+              }`}
+            >
+              {netChips > 0 ? "+" : netChips < 0 ? "-" : ""}{formatChips(Math.abs(netChips))}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Controls — fixed-height slot so the table doesn't shift as phases change */}
+      <div className="flex items-start justify-center px-4 pb-6 min-h-[108px] flex-shrink-0">
         {state.phase === "betting" && self && (
           <BettingControls
             playerChips={self.chips}

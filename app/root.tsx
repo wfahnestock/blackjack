@@ -7,10 +7,16 @@ import {
   ScrollRestoration,
 } from "react-router";
 import { AuthProvider } from "~/lib/AuthContext";
+import { installNgrokHeader } from "~/lib/ngrok";
 
 import type { Route } from "./+types/root";
 import "./app.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
+
+// Installed at module scope so it's active before any component mounts, meaning
+// even the very first request (the silent auth refresh) carries the header when
+// the app is served through an ngrok tunnel. No-ops outside the browser.
+installNgrokHeader();
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },

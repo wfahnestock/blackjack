@@ -1,4 +1,4 @@
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db } from "./client.js";
 import { playerAchievements, playerStats } from "./schema.js";
 import type { AchievementProgress } from "../achievements/definitions.js";
@@ -47,6 +47,21 @@ export async function unlockMany(
     .insert(playerAchievements)
     .values(achievementIds.map((achievementId) => ({ playerId, achievementId })))
     .onConflictDoNothing();
+}
+
+/** Removes an achievement unlock, so the player can earn it again. Admin tooling. */
+export async function revokeAchievement(
+  playerId: string,
+  achievementId: string
+): Promise<void> {
+  await db
+    .delete(playerAchievements)
+    .where(
+      and(
+        eq(playerAchievements.playerId, playerId),
+        eq(playerAchievements.achievementId, achievementId)
+      )
+    );
 }
 
 /** Reads the achievement progress blob for a player. Returns defaults if missing. */

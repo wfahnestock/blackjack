@@ -15,10 +15,26 @@ export function DealerZone({ hand, cardSkin }: DealerZoneProps) {
   const isBust = best > 21;
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
-        Dealer
-      </span>
+    <div className="flex flex-col items-center gap-2">
+      {/* Header: DEALER label + value badge (reference layout) */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs font-semibold text-gray-300 uppercase tracking-widest">
+          Dealer
+        </span>
+        {score && (
+          <span
+            className={`text-xs font-bold px-2 py-0.5 rounded ${
+              isBust
+                ? "bg-red-950 text-red-400"
+                : best === 21
+                ? "bg-yellow-900 text-yellow-400"
+                : "bg-gray-900 text-gray-100"
+            }`}
+          >
+            {score}
+          </span>
+        )}
+      </div>
 
       {/* Cards */}
       <div className="flex -space-x-3">
@@ -27,6 +43,7 @@ export function DealerZone({ hand, cardSkin }: DealerZoneProps) {
             key={i}
             card={card}
             skin={cardSkin}
+            dealAnimate
             style={{ zIndex: i, position: "relative" }}
           />
         ))}
@@ -34,21 +51,6 @@ export function DealerZone({ hand, cardSkin }: DealerZoneProps) {
           <div className="w-14 h-20 rounded-lg border-2 border-dashed border-gray-700" />
         )}
       </div>
-
-      {/* Score */}
-      {score && (
-        <span
-          className={`text-sm font-bold px-3 py-1 rounded-full ${
-            isBust
-              ? "bg-red-950 text-red-400"
-              : best === 21
-              ? "bg-yellow-900 text-yellow-400"
-              : "bg-gray-800 text-gray-300"
-          }`}
-        >
-          {score}
-        </span>
-      )}
     </div>
   );
 }

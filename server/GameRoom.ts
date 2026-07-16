@@ -10,7 +10,9 @@ import type {
   RoleInfo,
   RoomListing,
 } from "../app/lib/types.js";
-import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY, MODERATOR_ROLE_NAMES } from "../app/lib/constants.js";
+import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY } from "../app/lib/constants.js";
+import { hasPermission, type Permission } from "../app/lib/permissions.js";
+import * as adminRepo from "./db/AdminRepository.js";
 import { GameStateMachine } from "./GameStateMachine.js";
 import * as chatRepo from "./db/ChatRepository.js";
 import * as roleRepo from "./db/RoleRepository.js";
@@ -238,7 +240,7 @@ export class GameRoom {
     this.machine.handleInsurance(playerId, take);
   }
 
-  handleChatMessage(socketId: string, rawMessage: string): void {
+  async handleChatMessage(socketId: string, rawMessage: string): Promise<void> {
     const playerId = this.socketToPlayer.get(socketId);
     if (!playerId) return;
 
@@ -247,6 +249,15 @@ export class GameRoom {
 
     const message = rawMessage.trim();
     if (message.length === 0 || message.length > MAX_CHAT_MESSAGE_LENGTH) return;
+
+    // Muted players can't post. Read from the DB so a mute applied mid-session
+    // takes effect immediately rather than at next join.
+    if (await adminRepo.isMuted(playerId)) {
+      (this.io.to(socketId) as any).emit("chat:error", {
+        message: "You are muted and can't send messages.",
+      });
+      return;
+    }
 
     const now = Date.now();
     const rateLimit = this.chatRateLimits.get(playerId) ?? { lastAt: 0, lastContent: "" };
@@ -299,7 +310,7 @@ export class GameRoom {
 
   handleRemoveMessage(socketId: string, messageId: string): void {
     const playerId = this.socketToPlayer.get(socketId);
-    if (!playerId || !this.hasModerationPrivilege(playerId)) return;
+    if (!playerId || !this.can(playerId, "chat.delete_message")) return;
 
     chatRepo
       .censorMessage(messageId)
@@ -310,7 +321,7 @@ export class GameRoom {
 
   handleClearChat(socketId: string): void {
     const playerId = this.socketToPlayer.get(socketId);
-    if (!playerId || !this.hasModerationPrivilege(playerId)) return;
+    if (!playerId || !this.can(playerId, "chat.clear")) return;
 
     const player = this.machine.getPlayer(playerId);
     if (!player) return;
@@ -354,9 +365,13 @@ export class GameRoom {
     return this.playerCount;
   }
 
-  private hasModerationPrivilege(playerId: string): boolean {
-    const roles = this.playerRolesCache.get(playerId) ?? [];
-    return roles.some((r) => MODERATOR_ROLE_NAMES.has(r.name));
+  /**
+   * Permission check against the player's roles (see app/lib/permissions.ts).
+   * Replaces the old hardcoded role-name list, so which roles can moderate is
+   * now configurable per role at runtime rather than baked into the code.
+   */
+  private can(playerId: string, permission: Permission): boolean {
+    return hasPermission(this.playerRolesCache.get(playerId) ?? [], permission);
   }
 
   /** Returns a lightweight snapshot used by the public room browser. */

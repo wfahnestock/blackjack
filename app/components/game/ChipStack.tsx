@@ -1,4 +1,5 @@
-import { CHIP_DENOMINATIONS, CHIP_COLORS } from "~/lib/constants";
+import { CHIP_DENOMINATIONS } from "~/lib/constants";
+import { chipStyle } from "~/lib/chipStyle";
 
 interface ChipStackProps {
   amount: number;
@@ -35,14 +36,8 @@ export function ChipStack({ amount, size = "md" }: ChipStackProps) {
           Array.from({ length: count }).map((_, i) => (
             <div
               key={`${denom}-${i}`}
-              className="absolute rounded-full border-2 shadow-md"
-              style={{
-                width: chipSize,
-                height: chipSize,
-                bottom: i * overlap,
-                backgroundColor: CHIP_COLORS[denom as keyof typeof CHIP_COLORS],
-                borderColor: "rgba(255,255,255,0.3)",
-              }}
+              className="absolute"
+              style={{ ...chipStyle(denom, chipSize), bottom: i * overlap }}
             />
           ))
         )}

@@ -44,10 +44,16 @@ export function isBust(hand: Hand): boolean {
 }
 
 export function isSoft(cards: Card[]): boolean {
-  // A hand is "soft" if one ace is counted as 11
-  const values = getHandValues(cards);
-  const best = getBestValue(cards);
-  return values.includes(best) && best <= 21 && cards.some((c) => c.rank === "A");
+  // A hand is "soft" if an ace can still count as 11 without busting.
+  // Note: we can't infer this from getHandValues, which already discards the
+  // busting (ace-as-11) branch, so a hard hand containing a forced-1 ace
+  // (e.g. A-6-10 = hard 17) would look soft. Compute it directly instead:
+  // take the hard total (every ace as 1); the hand is soft iff promoting one
+  // ace to 11 (adding 10) stays at or under 21.
+  const visible = cards.filter((c) => !c.faceDown);
+  if (!visible.some((c) => c.rank === "A")) return false;
+  const hardTotal = visible.reduce((sum, c) => sum + RANK_VALUES[c.rank][0], 0);
+  return hardTotal + 10 <= 21;
 }
 
 export function canSplit(hand: Hand, existingSplitCount: number): boolean {

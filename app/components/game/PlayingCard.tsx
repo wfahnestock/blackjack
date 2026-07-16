@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import type { Card } from "~/lib/types";
 import { cardSkinFaceClass, cardSkinBackClass } from "~/lib/cardSkins";
+import { useDealFlyIn } from "~/lib/dealOrigin";
 
 interface PlayingCardProps {
   card: Card;
@@ -9,6 +10,8 @@ interface PlayingCardProps {
   style?: React.CSSProperties;
   /** Card skin key from the owning player (or dealer).  Null/undefined = default styling. */
   skin?: string | null;
+  /** When true, the card flies in from the shoe on mount instead of the default appear. */
+  dealAnimate?: boolean;
 }
 
 const SUIT_SYMBOLS: Record<string, string> = {
@@ -20,9 +23,10 @@ const SUIT_SYMBOLS: Record<string, string> = {
 
 const RED_SUITS = new Set(["hearts", "diamonds"]);
 
-export function PlayingCard({ card, small = false, className = "", style, skin }: PlayingCardProps) {
+export function PlayingCard({ card, small = false, className = "", style, skin, dealAnimate = false }: PlayingCardProps) {
   const isVoid = skin === "void";
   const [voidParallax, setVoidParallax] = useState<React.CSSProperties>({});
+  const flyRef = useDealFlyIn<HTMLDivElement>(dealAnimate);
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!isVoid) return;
@@ -43,18 +47,19 @@ export function PlayingCard({ card, small = false, className = "", style, skin }
   }, [isVoid]);
 
   if (card.faceDown) {
-    return <CardBack small={small} className={className} style={style} skin={skin} />;
+    return <CardBack small={small} className={className} style={style} skin={skin} dealAnimate={dealAnimate} />;
   }
 
   const isRed = RED_SUITS.has(card.suit);
   const symbol = SUIT_SYMBOLS[card.suit];
-  const w = small ? "w-11" : "w-14";
-  const h = small ? "h-16" : "h-20";
+  const w = small ? "w-[52px]" : "w-14";
+  const h = small ? "h-[74px]" : "h-20";
   const text = small ? "text-sm" : "text-base";
   const faceClass = cardSkinFaceClass(skin);
 
   return (
     <div
+      ref={flyRef}
       className={`
         ${w} ${h} rounded-lg bg-white border border-gray-200 shadow-md
         flex flex-col justify-between p-1 select-none card-appear
@@ -79,13 +84,15 @@ export function PlayingCard({ card, small = false, className = "", style, skin }
   );
 }
 
-function CardBack({ small = false, className = "", style, skin }: { small?: boolean; className?: string; style?: React.CSSProperties; skin?: string | null }) {
-  const w = small ? "w-11" : "w-14";
-  const h = small ? "h-16" : "h-20";
+function CardBack({ small = false, className = "", style, skin, dealAnimate = false }: { small?: boolean; className?: string; style?: React.CSSProperties; skin?: string | null; dealAnimate?: boolean }) {
+  const w = small ? "w-[52px]" : "w-14";
+  const h = small ? "h-[74px]" : "h-20";
   const backClass = cardSkinBackClass(skin);
+  const flyRef = useDealFlyIn<HTMLDivElement>(dealAnimate);
 
   return (
     <div
+      ref={flyRef}
       className={`
         ${w} ${h} rounded-lg bg-blue-900 border border-blue-700 shadow-md
         flex items-center justify-center select-none card-appear

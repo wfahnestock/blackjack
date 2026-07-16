@@ -24,9 +24,27 @@ export async function createRole(data: {
   label: string;
   color: string;
   icon: string;
+  permissions?: string[];
 }): Promise<Role> {
-  const [role] = await db.insert(roles).values(data).returning();
+  const [role] = await db
+    .insert(roles)
+    .values({ ...data, permissions: data.permissions ?? [] })
+    .returning();
   return role;
+}
+
+/**
+ * Replaces a role's permission list. This is what makes admin access
+ * configurable per role at runtime (see app/lib/permissions.ts).
+ */
+export async function setRolePermissions(id: string, permissions: string[]): Promise<Role> {
+  const [updated] = await db
+    .update(roles)
+    .set({ permissions })
+    .where(eq(roles.id, id))
+    .returning();
+  if (!updated) throw new Error(`Role not found: ${id}`);
+  return updated;
 }
 
 export async function updateRole(

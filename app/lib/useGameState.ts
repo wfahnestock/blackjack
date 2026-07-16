@@ -17,19 +17,38 @@ export function useGameState() {
       setState(cachedGameState);
     }
 
-    const onSync = (newState: GameState) => setState(newState);
+    // Pending staggered deal-animation timers (from game:card-dealt). Each one
+    // blindly appends a card, so a timer that fires *after* an authoritative
+    // state update would append a card the update already included, producing a
+    // phantom extra card (e.g. 3 cards after the opening deal). This happens when
+    // the timers are delayed past the sync — most commonly background-tab timer
+    // throttling, also network jitter or a slow frame. Cards can't be deduped by
+    // value (a 6-deck shoe has identical rank+suit cards), so instead we cancel
+    // any outstanding deal timers whenever an authoritative update lands.
+    const pendingDeals = new Set<ReturnType<typeof setTimeout>>();
+    const cancelPendingDeals = () => {
+      pendingDeals.forEach(clearTimeout);
+      pendingDeals.clear();
+    };
+
+    const onSync = (newState: GameState) => {
+      cancelPendingDeals();
+      setState(newState);
+    };
 
     const onPhaseChanged = ({ phase, phaseEndsAt, activePlayerId, activeHandId }: Pick<GameState, "phase" | "phaseEndsAt" | "activePlayerId" | "activeHandId">) => {
       setState((prev) => prev ? { ...prev, phase, phaseEndsAt, activePlayerId, activeHandId } : prev);
     };
 
     const onPlayerUpdated = (player: Player) => {
+      cancelPendingDeals();
       setState((prev) => prev
         ? { ...prev, players: prev.players.map((p) => p.playerId === player.playerId ? player : p) }
         : prev);
     };
 
     const onHandUpdated = ({ playerId, hand }: { playerId: string; hand: Hand }) => {
+      cancelPendingDeals();
       setState((prev) => {
         if (!prev) return prev;
         return {
@@ -43,6 +62,7 @@ export function useGameState() {
     };
 
     const onDealerUpdated = (dealerHand: Hand) => {
+      cancelPendingDeals();
       setState((prev) => prev ? { ...prev, dealerHand } : prev);
     };
 
@@ -53,7 +73,8 @@ export function useGameState() {
     const onCardDealt = ({ target, playerId, handId, card, delay }: {
       target: "dealer" | "player"; playerId?: string; handId?: string; card: any; delay: number;
     }) => {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        pendingDeals.delete(timer);
         setState((prev) => {
           if (!prev) return prev;
           const shoeNext = { ...prev.shoe, cardsRemaining: prev.shoe.cardsRemaining - 1, penetration: 1 - (prev.shoe.cardsRemaining - 1) / prev.shoe.totalCards };
@@ -70,6 +91,7 @@ export function useGameState() {
           };
         });
       }, delay);
+      pendingDeals.add(timer);
     };
 
     const onShuffle = () => {
@@ -96,6 +118,7 @@ export function useGameState() {
       socket.off("state:shoe-updated", onShoeUpdated);
       socket.off("game:card-dealt", onCardDealt as any);
       socket.off("game:shuffle", onShuffle);
+      cancelPendingDeals();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

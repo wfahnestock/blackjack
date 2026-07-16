@@ -208,13 +208,99 @@ interface PlayerSeatProps {
   isCurrentPlayer: boolean;
   isSelf:          boolean;
   onPlayerClick?:  (playerId: string) => void;
+  /** Tighter sizing + smaller cards for the arced casino-table layout. */
+  compact?:        boolean;
 }
 
-export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPlayerClick }: PlayerSeatProps) {
+export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPlayerClick, compact = false }: PlayerSeatProps) {
   const isDisconnected = player.status === "disconnected";
   const payoutFloaters = usePayoutFloaters(player);
   const actionFloaters = useActionFloaters(player);
+  const initial = player.displayName.charAt(0).toUpperCase();
 
+  const floaters = (
+    <>
+      {actionFloaters.map((f) => (
+        <span
+          key={f.id}
+          className={`action-floater z-10000 absolute bottom-full left-1/2 text-base font-bold tracking-wide uppercase whitespace-nowrap drop-shadow-md ${ACTION_COLORS[f.action]}`}
+        >
+          {ACTION_LABELS[f.action]}
+        </span>
+      ))}
+      {payoutFloaters.map((f) => (
+        <span
+          key={f.id}
+          className={`payout-floater absolute bottom-0 left-1/2 -translate-x-1/2 text-base font-black drop-shadow-lg whitespace-nowrap ${PAYOUT_COLORS[f.result]}`}
+        >
+          {formatNet(f.net, f.result)}
+        </span>
+      ))}
+    </>
+  );
+
+  // ── Circular casino seat (arc table layout) ──────────────────────────────────
+  if (compact) {
+    return (
+      <div className={`relative flex flex-col items-center gap-1 ${isDisconnected ? "opacity-50" : ""}`}>
+        {/* Identity header — sits above the cards so it never spills off the felt */}
+        <button
+          className={`group flex flex-col items-center leading-tight ${onPlayerClick ? "cursor-pointer" : "cursor-default"}`}
+          onClick={() => onPlayerClick?.(player.playerId)}
+          disabled={!onPlayerClick}
+          title={onPlayerClick ? `View ${player.displayName}'s profile` : undefined}
+        >
+          <div className="flex items-center gap-1.5">
+            <div
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[11px] shadow transition-all
+                ${isCurrentPlayer ? "ring-2 ring-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)]" : "ring-2 ring-black/40"}`}
+              style={{ backgroundColor: player.avatarColor }}
+            >
+              {initial}
+            </div>
+            <span
+              className="text-xs font-semibold truncate max-w-[96px] uppercase tracking-wide"
+              style={player.nameEffect ? { overflow: "clip", overflowClipMargin: "24px" } : undefined}
+            >
+              {isSelf ? (
+                <span className="text-emerald-300">You</span>
+              ) : (
+                <DisplayName
+                  displayName={player.displayName}
+                  nameEffect={player.nameEffect}
+                  className={isCurrentPlayer ? "text-emerald-300" : "text-gray-100"}
+                />
+              )}
+            </span>
+          </div>
+          {!isSelf && (
+            <span className="text-[10px] text-yellow-400/90 font-medium">
+              {formatChips(player.chips)}
+            </span>
+          )}
+        </button>
+
+        {/* Hand(s) — value badge, cards, bet chip (matches the trainer layout) */}
+        {player.hands.length > 0 && (
+          <div className="flex gap-3 justify-center">
+            {player.hands.map((hand) => (
+              <PlayerHand
+                key={hand.handId}
+                hand={hand}
+                isActive={isCurrentPlayer && hand.handId === activeHandId}
+                small
+                cardSkin={player.cardSkin}
+              />
+            ))}
+          </div>
+        )}
+
+        {floaters}
+      </div>
+    );
+  }
+
+  // ── Original panel (mobile row fallback) ─────────────────────────────────────
   return (
     <div
       className={`
@@ -278,6 +364,7 @@ export function PlayerSeat({ player, activeHandId, isCurrentPlayer, isSelf, onPl
               key={hand.handId}
               hand={hand}
               isActive={isCurrentPlayer && hand.handId === activeHandId}
+              small={compact}
               cardSkin={player.cardSkin}
             />
           ))}

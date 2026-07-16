@@ -71,11 +71,9 @@ export const DEFAULT_SETTINGS: GameSettings = {
 export const MAX_CHAT_MESSAGE_LENGTH = 200;
 export const MAX_CHAT_HISTORY = 50;
 
-/**
- * Role names that grant chat moderation privileges (remove messages, clear chat).
- * Checked against the `name` field of a player's roles.
- */
-export const MODERATOR_ROLE_NAMES = new Set(["moderator", "staff"]);
+// Chat moderation is no longer gated by hardcoded role names. It now uses the
+// granular permission keys in app/lib/permissions.ts ("chat.delete_message",
+// "chat.clear"), which are assigned per role and editable from the admin console.
 
 /**
  * Role names that receive the exclusive developer glitch name effect.

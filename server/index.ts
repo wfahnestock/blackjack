@@ -15,6 +15,13 @@ import { ROOM_CODE_LENGTH, DEFAULT_SETTINGS } from "../app/lib/constants.js";
 import { GameRoom } from "./GameRoom.js";
 import * as playerRepo from "./db/PlayerRepository.js";
 import * as roleRepo from "./db/RoleRepository.js";
+import * as adminRepo from "./db/AdminRepository.js";
+import {
+  effectivePermissions,
+  isPermission,
+  type Permission,
+} from "../app/lib/permissions.js";
+import type { Role } from "./db/schema.js";
 import * as statsRepo from "./db/StatsRepository.js";
 import * as authService from "./auth/AuthService.js";
 import * as vanityRepo from "./db/VanityRepository.js";
@@ -34,7 +41,12 @@ const httpServer = createServer(app);
 
 // ─── Auth Middleware ─────────────────────────────────────────────────────────
 
-type AuthedRequest = express.Request & { playerId?: string };
+type AuthedRequest = express.Request & {
+  playerId?: string;
+  /** Populated by requirePermission(): the caller's roles and effective permissions. */
+  callerRoles?: Role[];
+  callerPerms?: Set<Permission>;
+};
 
 function requireAuth(
   req: AuthedRequest,
@@ -53,6 +65,49 @@ function requireAuth(
   }
   req.playerId = payload.playerId;
   next();
+}
+
+/**
+ * Gates an admin endpoint behind a single permission key. Loads the caller's
+ * roles, derives their effective permissions, and rejects when the key isn't
+ * granted. The server is the authority: the client's copy of these permissions
+ * only decides what UI to render, never what is allowed.
+ */
+function requirePermission(permission: Permission) {
+  return async (
+    req: AuthedRequest,
+    res: express.Response,
+    next: express.NextFunction
+  ): Promise<void> => {
+    if (!req.playerId) {
+      res.status(401).json({ error: "Authentication required" });
+      return;
+    }
+    try {
+      const roles = await roleRepo.getPlayerRoles(req.playerId);
+      req.callerRoles = roles;
+      req.callerPerms = new Set(effectivePermissions(roles));
+      if (!req.callerPerms.has(permission)) {
+        res.status(403).json({ error: "Forbidden", missing: permission });
+        return;
+      }
+      next();
+    } catch (err) {
+      console.error("[requirePermission]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  };
+}
+
+/**
+ * Anti-escalation guard. A caller may only grant, assign, or edit permissions
+ * they already hold themselves. Without this, anyone with `role.assign` could
+ * hand themselves the Developer role, and anyone with `role.manage` could grant
+ * themselves every key (or strip a role above them).
+ */
+function outranks(callerPerms: Set<Permission> | undefined, perms: readonly string[]): boolean {
+  if (!callerPerms) return false;
+  return perms.every((p) => isPermission(p) && callerPerms.has(p));
 }
 
 // ─── REST Endpoints ──────────────────────────────────────────────────────────
@@ -139,6 +194,16 @@ app.post("/api/auth/login", async (req, res) => {
     const valid = await authService.verifyPassword(password, player.passwordHash);
     if (!valid) {
       res.status(401).json({ error: "Invalid username or password" });
+      return;
+    }
+
+    // Checked only after the password is verified, so we don't leak ban status.
+    if (player.bannedAt) {
+      res.status(403).json({
+        error: player.banReason
+          ? `This account is banned: ${player.banReason}`
+          : "This account is banned",
+      });
       return;
     }
 
@@ -589,7 +654,7 @@ const io = new Server<ClientToServerEvents, ServerToClientEvents, DefaultEventsM
 );
 
 // Validate JWT on every socket connection
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   const token = socket.handshake.auth?.token as string | undefined;
   if (!token) {
     next(new Error("Authentication required"));
@@ -599,6 +664,17 @@ io.use((socket, next) => {
   if (!payload) {
     next(new Error("Invalid or expired token"));
     return;
+  }
+  // A ban blocks the socket too, otherwise an already-issued JWT would still
+  // let a banned player keep playing until it expired.
+  try {
+    const ban = await adminRepo.getBanStatus(payload.playerId);
+    if (ban.banned) {
+      next(new Error(ban.reason ? `Banned: ${ban.reason}` : "This account is banned"));
+      return;
+    }
+  } catch (err) {
+    console.error("[socket auth] ban check failed", err);
   }
   socket.data.playerId = payload.playerId;
   socket.data.username = payload.username;
@@ -664,7 +740,8 @@ io.on("connection", (socket: AppSocket) => {
             players,
             results,
             (event, data) => (io.to(code) as any).emit(event, data),
-            dealerBusted
+            dealerBusted,
+            room.state.settings.maxBet
           );
         },
         broadcastRoomList
@@ -810,7 +887,10 @@ io.on("connection", (socket: AppSocket) => {
   socket.on("chat:send", ({ message }) => {
     const code = socketRoom.get(socket.id);
     if (!code) return;
-    rooms.get(code)?.handleChatMessage(socket.id, message);
+    rooms
+      .get(code)
+      ?.handleChatMessage(socket.id, message)
+      .catch((err) => console.error("[chat:send]", err));
   });
 
   socket.on("chat:remove_message", ({ messageId }) => {
@@ -851,6 +931,332 @@ io.on("connection", (socket: AppSocket) => {
     callback(listing);
   });
 });
+
+// ─── Admin API ───────────────────────────────────────────────────────────────
+// Every endpoint is gated by a permission key (app/lib/permissions.ts). Which
+// roles hold which keys lives on the roles table and is editable at runtime, so
+// access can be retuned without a deploy. The server always re-checks.
+
+/** Force every live socket for a player to disconnect (used by ban and kick). */
+function disconnectPlayer(playerId: string, message: string): void {
+  for (const [, s] of io.sockets.sockets) {
+    const sock = s as AppSocket;
+    if (sock.data?.playerId === playerId) {
+      sock.emit("error", { code: "FORCE_DISCONNECT", message });
+      sock.disconnect(true);
+    }
+  }
+}
+
+app.get(
+  "/api/admin/players",
+  requireAuth,
+  requirePermission("admin.access"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const q = typeof req.query.q === "string" ? req.query.q : "";
+      res.json({ players: await adminRepo.searchPlayers(q) });
+    } catch (err) {
+      console.error("[admin/players]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.get(
+  "/api/admin/players/:id",
+  requireAuth,
+  requirePermission("admin.access"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const detail = await adminRepo.getPlayerDetail(req.params.id);
+      if (!detail) {
+        res.status(404).json({ error: "Player not found" });
+        return;
+      }
+      res.json(detail);
+    } catch (err) {
+      console.error("[admin/player-detail]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.get(
+  "/api/admin/roles",
+  requireAuth,
+  requirePermission("admin.access"),
+  async (_req: AuthedRequest, res) => {
+    try {
+      res.json({ roles: await roleRepo.findAllRoles() });
+    } catch (err) {
+      console.error("[admin/roles]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.get(
+  "/api/admin/achievements",
+  requireAuth,
+  requirePermission("admin.access"),
+  (_req: AuthedRequest, res) => {
+    res.json({
+      achievements: ACHIEVEMENTS.map((a) => ({
+        id: a.id,
+        name: a.name,
+        description: a.description,
+        category: a.category,
+        icon: a.icon,
+      })),
+    });
+  }
+);
+
+// ── Economy & player data ────────────────────────────────────────────────────
+
+app.post(
+  "/api/admin/players/:id/chips",
+  requireAuth,
+  requirePermission("player.adjust_chips"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const { set, delta } = req.body ?? {};
+      let chips: number;
+      if (typeof set === "number" && Number.isFinite(set)) {
+        chips = await adminRepo.setChips(req.params.id, set);
+      } else if (typeof delta === "number" && Number.isFinite(delta)) {
+        chips = await adminRepo.adjustChips(req.params.id, delta);
+      } else {
+        res.status(400).json({ error: "Provide a numeric `set` or `delta`" });
+        return;
+      }
+      res.json({ chips });
+    } catch (err) {
+      console.error("[admin/chips]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/players/:id/reset-stats",
+  requireAuth,
+  requirePermission("player.reset_stats"),
+  async (req: AuthedRequest, res) => {
+    try {
+      await adminRepo.resetStats(req.params.id);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/reset-stats]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/players/:id/achievements/:achievementId",
+  requireAuth,
+  requirePermission("player.grant_achievement"),
+  async (req: AuthedRequest, res) => {
+    try {
+      if (!ACHIEVEMENT_MAP.has(req.params.achievementId)) {
+        res.status(400).json({ error: "Unknown achievement" });
+        return;
+      }
+      await achievementRepo.unlockAchievement(req.params.id, req.params.achievementId);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/grant-achievement]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.delete(
+  "/api/admin/players/:id/achievements/:achievementId",
+  requireAuth,
+  requirePermission("player.revoke_achievement"),
+  async (req: AuthedRequest, res) => {
+    try {
+      await achievementRepo.revokeAchievement(req.params.id, req.params.achievementId);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/revoke-achievement]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+// ── Moderation ───────────────────────────────────────────────────────────────
+
+app.post(
+  "/api/admin/players/:id/kick",
+  requireAuth,
+  requirePermission("player.kick"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 200) : null;
+      disconnectPlayer(
+        req.params.id,
+        reason ? `Kicked from the table: ${reason}` : "You were kicked from the table."
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/kick]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/players/:id/ban",
+  requireAuth,
+  requirePermission("player.ban"),
+  async (req: AuthedRequest, res) => {
+    try {
+      if (req.params.id === req.playerId) {
+        res.status(400).json({ error: "You can't ban yourself" });
+        return;
+      }
+      const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 200) : null;
+      await adminRepo.setBan(req.params.id, true, reason);
+      disconnectPlayer(req.params.id, reason ? `Banned: ${reason}` : "You have been banned.");
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/ban]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/players/:id/unban",
+  requireAuth,
+  requirePermission("player.unban"),
+  async (req: AuthedRequest, res) => {
+    try {
+      await adminRepo.setBan(req.params.id, false, null);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/unban]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/admin/players/:id/mute",
+  requireAuth,
+  requirePermission("player.mute"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const minutes = req.body?.minutes;
+      // Absent / null / <= 0 means unmute. Capped at one year.
+      const until =
+        typeof minutes === "number" && minutes > 0
+          ? new Date(Date.now() + Math.min(minutes, 525_600) * 60_000)
+          : null;
+      await adminRepo.setMute(req.params.id, until);
+      res.json({ ok: true, mutedUntil: until });
+    } catch (err) {
+      console.error("[admin/mute]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+// ── Roles ────────────────────────────────────────────────────────────────────
+// Assigning/editing roles is guarded against privilege escalation: you may only
+// touch permissions you already hold yourself.
+
+app.post(
+  "/api/admin/players/:id/roles/:roleId",
+  requireAuth,
+  requirePermission("role.assign"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const role = await roleRepo.findRoleById(req.params.roleId);
+      if (!role) {
+        res.status(404).json({ error: "Role not found" });
+        return;
+      }
+      if (!outranks(req.callerPerms, role.permissions ?? [])) {
+        res
+          .status(403)
+          .json({ error: "You can't assign a role holding permissions you don't have" });
+        return;
+      }
+      await roleRepo.addRoleToPlayer(req.params.id, req.params.roleId);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/assign-role]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.delete(
+  "/api/admin/players/:id/roles/:roleId",
+  requireAuth,
+  requirePermission("role.assign"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const role = await roleRepo.findRoleById(req.params.roleId);
+      if (!role) {
+        res.status(404).json({ error: "Role not found" });
+        return;
+      }
+      if (!outranks(req.callerPerms, role.permissions ?? [])) {
+        res
+          .status(403)
+          .json({ error: "You can't remove a role holding permissions you don't have" });
+        return;
+      }
+      await roleRepo.removeRoleFromPlayer(req.params.id, req.params.roleId);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[admin/revoke-role]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
+
+app.put(
+  "/api/admin/roles/:id/permissions",
+  requireAuth,
+  requirePermission("role.manage"),
+  async (req: AuthedRequest, res) => {
+    try {
+      const role = await roleRepo.findRoleById(req.params.id);
+      if (!role) {
+        res.status(404).json({ error: "Role not found" });
+        return;
+      }
+      const requested: string[] = Array.isArray(req.body?.permissions)
+        ? req.body.permissions.filter((p: unknown): p is string => typeof p === "string")
+        : [];
+      const invalid = requested.filter((p) => !isPermission(p));
+      if (invalid.length) {
+        res.status(400).json({ error: `Unknown permissions: ${invalid.join(", ")}` });
+        return;
+      }
+      // Can't edit a role that already holds keys you lack, and can't grant keys you lack.
+      if (!outranks(req.callerPerms, role.permissions ?? [])) {
+        res.status(403).json({ error: "You can't edit a role that outranks you" });
+        return;
+      }
+      if (!outranks(req.callerPerms, requested)) {
+        res.status(403).json({ error: "You can't grant permissions you don't have" });
+        return;
+      }
+      res.json({ role: await roleRepo.setRolePermissions(req.params.id, requested) });
+    } catch (err) {
+      console.error("[admin/role-permissions]", err);
+      res.status(500).json({ error: "Server error" });
+    }
+  }
+);
 
 // ─── Static Frontend (production) ────────────────────────────────────────────
 

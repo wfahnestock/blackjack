@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import type { ChatMessage, RoleInfo } from "~/lib/types";
-import { MAX_CHAT_MESSAGE_LENGTH, MODERATOR_ROLE_NAMES } from "~/lib/constants";
+import { MAX_CHAT_MESSAGE_LENGTH } from "~/lib/constants";
+import { hasPermission } from "~/lib/permissions";
 import { DisplayName } from "~/components/ui/DisplayName";
 
 /**
@@ -61,7 +62,10 @@ export function ChatPanel({
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const isModerator = selfRoles.some((r) => MODERATOR_ROLE_NAMES.has(r.name));
+  // Permission-gated rather than role-name gated. The server re-checks both of
+  // these; this only decides whether the control renders.
+  const canClearChat = hasPermission(selfRoles, "chat.clear");
+  const canDeleteMessage = hasPermission(selfRoles, "chat.delete_message");
 
   // Auto-scroll to bottom whenever a new message arrives
   useEffect(() => {
@@ -94,7 +98,7 @@ export function ChatPanel({
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 shrink-0">
         <span className="text-sm font-semibold text-gray-300">Chat</span>
         <div className="flex items-center gap-2">
-          {isModerator && onClearChat && (
+          {canClearChat && onClearChat && (
             <button
               onClick={onClearChat}
               className="text-gray-600 hover:text-red-400 transition-colors p-0.5 rounded"
@@ -179,7 +183,7 @@ export function ChatPanel({
                 >
                   {msg.censored ? "message removed" : msg.message}
                 </div>
-                {isModerator && !msg.censored && onRemoveMessage && (
+                {canDeleteMessage && !msg.censored && onRemoveMessage && (
                   <button
                     onClick={() => onRemoveMessage(msg.messageId)}
                     className="opacity-0 group-hover:opacity-100 shrink-0 text-gray-600 hover:text-red-400 transition-all p-0.5 rounded"

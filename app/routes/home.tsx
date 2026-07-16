@@ -8,6 +8,7 @@ import { DisplayName } from "~/components/ui/DisplayName";
 import { RoomBrowser } from "~/components/home/RoomBrowser";
 import { useAuth } from "~/lib/AuthContext";
 import { useSocket } from "~/lib/useSocket";
+import { hasPermission } from "~/lib/permissions";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -140,6 +141,16 @@ export default function Home() {
             <span>⚙️</span>
             <span className="hidden sm:inline">Settings</span>
           </Link>
+          {/* Staff only. The server re-checks on every admin call; this just hides the entry point. */}
+          {hasPermission(user?.roles, "admin.access") && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-amber-300 hover:text-amber-200 hover:bg-gray-800 transition-colors"
+            >
+              <span>🛡️</span>
+              <span className="hidden sm:inline">Admin</span>
+            </Link>
+          )}
           <button
             onClick={logout}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-gray-800 transition-colors"

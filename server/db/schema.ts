@@ -12,6 +12,11 @@ export const players = pgTable("players", {
   equippedTableBg:    varchar("equipped_table_bg",    { length: 30 }),
   chips: integer("chips").notNull().default(2500),
   lastDailyClaimed: date("last_daily_claimed"),
+  /** Set when an admin bans the account. Null = not banned. Blocks login and sockets. */
+  bannedAt: timestamp("banned_at", { withTimezone: true }),
+  banReason: varchar("ban_reason", { length: 200 }),
+  /** Chat mute expiry. Null or in the past = not muted. */
+  mutedUntil: timestamp("muted_until", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -61,6 +66,12 @@ export const roles = pgTable("roles", {
   color:     varchar("color", { length: 30 }).notNull(),
   /** Full FontAwesome solid icon class (e.g. "fa-gavel", "fa-wrench"). */
   icon:      varchar("icon",  { length: 50 }).notNull(),
+  /**
+   * Admin permission keys this role grants (see app/lib/permissions.ts).
+   * Editable at runtime from the admin console, so who can do what is not
+   * baked into the code.
+   */
+  permissions: jsonb("permissions").$type<string[]>().notNull().default([]),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

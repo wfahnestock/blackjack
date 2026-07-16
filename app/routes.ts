@@ -6,6 +6,7 @@ export default [
   route("register", "routes/register.tsx"),
   route("settings", "routes/settings.tsx"),
   route("leaderboard", "routes/leaderboard.tsx"),
+  route("admin", "routes/admin.tsx"),
   route("lobby/:code", "routes/lobby.tsx"),
   route("room/:code", "routes/room.$code.tsx"),
 ] satisfies RouteConfig;

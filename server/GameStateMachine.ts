@@ -86,7 +86,7 @@ type HandResolution = { result: HandResult; payoutMultiplier: number };
  * Multiplier is applied to hand.bet; the caller adds it to chips.
  * Insurance is handled separately before calling this.
  */
-function resolveHandResult(
+export function resolveHandResult(
   hand: Hand,
   playerBJ: boolean,
   dealerBJ: boolean,
@@ -288,9 +288,17 @@ export class GameStateMachine {
     this.sync(); // Broadcast the "dealing" phase immediately so clients can react (e.g. sound)
 
     // Settle players who didn't bet (or joined after betting started).
-    // Disconnected players are left untouched — they hold their seat for reconnection.
     for (const player of this.state.players) {
-      if (player.status === "disconnected") continue;
+      // A player who disconnected during betting keeps their seat for a possible
+      // reconnection, but must NOT be dealt in this round. Clear their hand so
+      // they're excluded from the deal below; their pending bet hasn't been
+      // deducted yet, so voiding the hand costs them nothing. Their status stays
+      // "disconnected" so the client keeps showing them until they're evicted at
+      // the next startBetting.
+      if (player.status === "disconnected") {
+        player.hands = [];
+        continue;
+      }
 
       if (!player.hands.length || player.hands[0].bet === 0) {
         player.status = "sitting-out";
@@ -309,7 +317,9 @@ export class GameStateMachine {
     }
 
     // Deal: p1, p2, ..., dealer(up), p1, p2, ..., dealer(hole)
-    const activePlayers = this.state.players.filter((p) => p.hands.length > 0);
+    const activePlayers = this.state.players.filter(
+      (p) => p.hands.length > 0 && p.status !== "disconnected"
+    );
     let delay = 0;
     const DEAL_DELAY = 500;
 

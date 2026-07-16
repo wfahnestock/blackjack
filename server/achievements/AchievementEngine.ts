@@ -24,7 +24,8 @@ export async function processRound(
   players: Player[],
   results: RoundResult[],
   broadcast: BroadcastFn,
-  dealerBustedOverride?: boolean
+  dealerBustedOverride?: boolean,
+  tableMaxBet = 0
 ): Promise<void> {
   const activePlayers = players.filter((p) => p.hands.length > 0);
   if (activePlayers.length === 0) return;
@@ -84,6 +85,7 @@ export async function processRound(
           dealerUpcard,
           dealerBusted,
           chipsAtRoundStart,
+          tableMaxBet,
           progress,
           stats,
         };

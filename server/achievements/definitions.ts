@@ -47,6 +47,8 @@ export interface AchievementContext {
   dealerBusted: boolean;
   /** Chips the player had at the start of this round (before any bets were placed). */
   chipsAtRoundStart: number;
+  /** The table's configured maximum bet this round (settings.maxBet). */
+  tableMaxBet: number;
   progress: AchievementProgress;
   stats: {
     handsPlayed: number;
@@ -113,6 +115,13 @@ export const CATEGORY_META: Record<AchievementCategory, { label: string; icon: s
 export const CATEGORY_ORDER: AchievementCategory[] = [
   "skill", "streak", "gambler", "rare", "comeback", "meta", "funny",
 ];
+
+/**
+ * Minimum bet for the High Roller achievement, on top of betting the table
+ * maximum. Keeps low-max (and default 10k) tables from trivially qualifying:
+ * the table's max must be at least this for the achievement to be reachable.
+ */
+export const HIGH_ROLLER_MIN_BET = 25000;
 
 // ─── Achievement Definitions ──────────────────────────────────────────────────
 
@@ -254,11 +263,16 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   {
     id: "high_roller_win",
     name: "High Roller",
-    description: "Bet the table maximum and win.",
+    description: "Bet the table maximum (25,000+) and win.",
     icon: "fa-gem",
     category: "gambler",
-    check: ({ hand, result, stats }) =>
-      isWin(result.result) && stats.biggestBet > 0 && hand.bet >= stats.biggestBet,
+    // Must win while betting the full table maximum, and that max must clear the
+    // HIGH_ROLLER_MIN_BET floor. (Bets are clamped to the table max, so
+    // hand.bet >= tableMaxBet means the player bet exactly the max.)
+    check: ({ hand, result, tableMaxBet }) =>
+      isWin(result.result) &&
+      tableMaxBet >= HIGH_ROLLER_MIN_BET &&
+      hand.bet >= tableMaxBet,
   },
 
   {
