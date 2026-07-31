@@ -29,10 +29,8 @@ function makePlayer(id: string, overrides: Partial<Player> = {}): Player {
 function withStubbedTimers<T>(fn: () => T): T {
   const realSet = global.setTimeout;
   const realClear = global.clearTimeout;
-  // @ts-expect-error minimal stub for tests
-  global.setTimeout = () => 0;
-  // @ts-expect-error minimal stub for tests
-  global.clearTimeout = () => {};
+  global.setTimeout = (() => 0) as unknown as typeof global.setTimeout;
+  global.clearTimeout = (() => {}) as unknown as typeof global.clearTimeout;
   try {
     return fn();
   } finally {

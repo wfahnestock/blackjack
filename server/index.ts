@@ -32,6 +32,11 @@ import { NAME_EFFECT_KEYS, NAME_EFFECTS } from "../app/lib/nameEffects.js";
 import * as skinsRepo from "./db/SkinsRepository.js";
 import { CARD_SKIN_KEYS, CARD_SKINS } from "../app/lib/cardSkins.js";
 import { TABLE_BG_KEYS, TABLE_BGS } from "../app/lib/tableBgs.js";
+import { installConsoleTimestamps, log } from "./logger.js";
+
+// Timestamp + level every console line, including all the existing [tag] logs.
+// Installed before anything else logs.
+installConsoleTimestamps();
 
 // ─── Express ────────────────────────────────────────────────────────────────
 
@@ -43,6 +48,8 @@ const httpServer = createServer(app);
 
 type AuthedRequest = express.Request & {
   playerId?: string;
+  /** Username from the JWT, for audit logging of admin actions. */
+  username?: string;
   /** Populated by requirePermission(): the caller's roles and effective permissions. */
   callerRoles?: Role[];
   callerPerms?: Set<Permission>;
@@ -64,6 +71,7 @@ function requireAuth(
     return;
   }
   req.playerId = payload.playerId;
+  req.username = payload.username;
   next();
 }
 
@@ -152,6 +160,8 @@ app.post("/api/auth/register", async (req, res) => {
       avatarColor ?? "#10B981",
       DEFAULT_SETTINGS.startingChips
     );
+
+    log.info("auth", `new account registered: ${player.username} (id: ${player.id})`);
 
     const token = authService.signToken({ playerId: player.id, username: player.username });
     const playerRoles = await roleRepo.getPlayerRoles(player.id);
@@ -719,18 +729,18 @@ io.on("connection", (socket: AppSocket) => {
         io,
         payload.settings ?? {},
         async (players, results) => {
-          const dealerBusted = room.state.dealerHand.cards.length > 0 &&
-            room.state.dealerHand.cards.every((c) => !c.faceDown) &&
-            (() => {
-              const cards = room.state.dealerHand.cards;
-              let best = 0, aces = 0;
-              for (const c of cards) {
-                if (c.rank === "A") { best += 11; aces++; }
-                else best += Math.min(10, Number(c.rank) || 10);
-              }
-              while (best > 21 && aces-- > 0) best -= 10;
-              return best > 21;
-            })();
+          const dealerCards = room.state.dealerHand.cards;
+          const dealerRevealed = dealerCards.length > 0 && dealerCards.every((c) => !c.faceDown);
+          const dealerTotal = (() => {
+            let best = 0, aces = 0;
+            for (const c of dealerCards) {
+              if (c.rank === "A") { best += 11; aces++; }
+              else best += Math.min(10, Number(c.rank) || 10);
+            }
+            while (best > 21 && aces-- > 0) best -= 10;
+            return best;
+          })();
+          const dealerBusted = dealerRevealed && dealerTotal > 21;
 
           await Promise.all([
             Promise.all(players.map((p) => playerRepo.updateChips(p.playerId, p.chips))),
@@ -742,6 +752,23 @@ io.on("connection", (socket: AppSocket) => {
             (event, data) => (io.to(code) as any).emit(event, data),
             dealerBusted,
             room.state.settings.maxBet
+          );
+
+          // One concise line per completed round: enough to follow the action
+          // on the backend without a per-move play-by-play.
+          const tally = results.reduce(
+            (a, r) => {
+              if (r.result === "win" || r.result === "blackjack" || r.result === "five-card-charlie") a.w++;
+              else if (r.result === "push") a.p++;
+              else a.l++;
+              return a;
+            },
+            { w: 0, l: 0, p: 0 }
+          );
+          log.info(
+            "game",
+            `${code} round ${room.state.roundNumber}: ${results.length} hand(s) ` +
+              `${tally.w}W/${tally.l}L/${tally.p}P, dealer ${dealerTotal}${dealerBusted ? " bust" : ""}`
           );
         },
         broadcastRoomList
@@ -830,6 +857,7 @@ io.on("connection", (socket: AppSocket) => {
       if (room.isEmpty) {
         room.destroy();
         rooms.delete(code);
+        log.info("room", `${code} closed (empty)`);
       }
       broadcastRoomList();
     }
@@ -917,6 +945,7 @@ io.on("connection", (socket: AppSocket) => {
         if (room.isEmpty) {
           room.destroy();
           rooms.delete(code);
+          log.info("room", `${code} closed (empty)`);
         }
         broadcastRoomList();
       }
@@ -969,7 +998,7 @@ app.get(
   requirePermission("admin.access"),
   async (req: AuthedRequest, res) => {
     try {
-      const detail = await adminRepo.getPlayerDetail(req.params.id);
+      const detail = await adminRepo.getPlayerDetail((req.params.id as string));
       if (!detail) {
         res.status(404).json({ error: "Player not found" });
         return;
@@ -1024,13 +1053,14 @@ app.post(
       const { set, delta } = req.body ?? {};
       let chips: number;
       if (typeof set === "number" && Number.isFinite(set)) {
-        chips = await adminRepo.setChips(req.params.id, set);
+        chips = await adminRepo.setChips((req.params.id as string), set);
       } else if (typeof delta === "number" && Number.isFinite(delta)) {
-        chips = await adminRepo.adjustChips(req.params.id, delta);
+        chips = await adminRepo.adjustChips((req.params.id as string), delta);
       } else {
         res.status(400).json({ error: "Provide a numeric `set` or `delta`" });
         return;
       }
+      log.info("admin", `${req.username} set chips of ${(req.params.id as string)} to ${chips}`);
       res.json({ chips });
     } catch (err) {
       console.error("[admin/chips]", err);
@@ -1045,7 +1075,8 @@ app.post(
   requirePermission("player.reset_stats"),
   async (req: AuthedRequest, res) => {
     try {
-      await adminRepo.resetStats(req.params.id);
+      await adminRepo.resetStats((req.params.id as string));
+      log.info("admin", `${req.username} reset stats of ${(req.params.id as string)}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/reset-stats]", err);
@@ -1060,11 +1091,12 @@ app.post(
   requirePermission("player.grant_achievement"),
   async (req: AuthedRequest, res) => {
     try {
-      if (!ACHIEVEMENT_MAP.has(req.params.achievementId)) {
+      if (!ACHIEVEMENT_MAP.has((req.params.achievementId as string))) {
         res.status(400).json({ error: "Unknown achievement" });
         return;
       }
-      await achievementRepo.unlockAchievement(req.params.id, req.params.achievementId);
+      await achievementRepo.unlockAchievement((req.params.id as string), (req.params.achievementId as string));
+      log.info("admin", `${req.username} granted "${(req.params.achievementId as string)}" to ${(req.params.id as string)}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/grant-achievement]", err);
@@ -1079,7 +1111,8 @@ app.delete(
   requirePermission("player.revoke_achievement"),
   async (req: AuthedRequest, res) => {
     try {
-      await achievementRepo.revokeAchievement(req.params.id, req.params.achievementId);
+      await achievementRepo.revokeAchievement((req.params.id as string), (req.params.achievementId as string));
+      log.info("admin", `${req.username} revoked "${(req.params.achievementId as string)}" from ${(req.params.id as string)}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/revoke-achievement]", err);
@@ -1098,9 +1131,10 @@ app.post(
     try {
       const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 200) : null;
       disconnectPlayer(
-        req.params.id,
+        (req.params.id as string),
         reason ? `Kicked from the table: ${reason}` : "You were kicked from the table."
       );
+      log.info("admin", `${req.username} kicked ${(req.params.id as string)}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/kick]", err);
@@ -1115,13 +1149,14 @@ app.post(
   requirePermission("player.ban"),
   async (req: AuthedRequest, res) => {
     try {
-      if (req.params.id === req.playerId) {
+      if ((req.params.id as string) === req.playerId) {
         res.status(400).json({ error: "You can't ban yourself" });
         return;
       }
       const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 200) : null;
-      await adminRepo.setBan(req.params.id, true, reason);
-      disconnectPlayer(req.params.id, reason ? `Banned: ${reason}` : "You have been banned.");
+      await adminRepo.setBan((req.params.id as string), true, reason);
+      disconnectPlayer((req.params.id as string), reason ? `Banned: ${reason}` : "You have been banned.");
+      log.warn("admin", `${req.username} BANNED ${(req.params.id as string)}${reason ? ` (${reason})` : ""}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/ban]", err);
@@ -1136,7 +1171,8 @@ app.post(
   requirePermission("player.unban"),
   async (req: AuthedRequest, res) => {
     try {
-      await adminRepo.setBan(req.params.id, false, null);
+      await adminRepo.setBan((req.params.id as string), false, null);
+      log.info("admin", `${req.username} unbanned ${(req.params.id as string)}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/unban]", err);
@@ -1157,7 +1193,11 @@ app.post(
         typeof minutes === "number" && minutes > 0
           ? new Date(Date.now() + Math.min(minutes, 525_600) * 60_000)
           : null;
-      await adminRepo.setMute(req.params.id, until);
+      await adminRepo.setMute((req.params.id as string), until);
+      log.info(
+        "admin",
+        `${req.username} ${until ? `muted ${(req.params.id as string)} until ${until.toISOString()}` : `unmuted ${(req.params.id as string)}`}`
+      );
       res.json({ ok: true, mutedUntil: until });
     } catch (err) {
       console.error("[admin/mute]", err);
@@ -1176,7 +1216,7 @@ app.post(
   requirePermission("role.assign"),
   async (req: AuthedRequest, res) => {
     try {
-      const role = await roleRepo.findRoleById(req.params.roleId);
+      const role = await roleRepo.findRoleById((req.params.roleId as string));
       if (!role) {
         res.status(404).json({ error: "Role not found" });
         return;
@@ -1187,7 +1227,8 @@ app.post(
           .json({ error: "You can't assign a role holding permissions you don't have" });
         return;
       }
-      await roleRepo.addRoleToPlayer(req.params.id, req.params.roleId);
+      await roleRepo.addRoleToPlayer((req.params.id as string), (req.params.roleId as string));
+      log.info("admin", `${req.username} assigned role ${role.name} to ${(req.params.id as string)}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/assign-role]", err);
@@ -1202,7 +1243,7 @@ app.delete(
   requirePermission("role.assign"),
   async (req: AuthedRequest, res) => {
     try {
-      const role = await roleRepo.findRoleById(req.params.roleId);
+      const role = await roleRepo.findRoleById((req.params.roleId as string));
       if (!role) {
         res.status(404).json({ error: "Role not found" });
         return;
@@ -1213,7 +1254,8 @@ app.delete(
           .json({ error: "You can't remove a role holding permissions you don't have" });
         return;
       }
-      await roleRepo.removeRoleFromPlayer(req.params.id, req.params.roleId);
+      await roleRepo.removeRoleFromPlayer((req.params.id as string), (req.params.roleId as string));
+      log.info("admin", `${req.username} removed role ${role.name} from ${(req.params.id as string)}`);
       res.json({ ok: true });
     } catch (err) {
       console.error("[admin/revoke-role]", err);
@@ -1228,7 +1270,7 @@ app.put(
   requirePermission("role.manage"),
   async (req: AuthedRequest, res) => {
     try {
-      const role = await roleRepo.findRoleById(req.params.id);
+      const role = await roleRepo.findRoleById((req.params.id as string));
       if (!role) {
         res.status(404).json({ error: "Role not found" });
         return;
@@ -1250,7 +1292,12 @@ app.put(
         res.status(403).json({ error: "You can't grant permissions you don't have" });
         return;
       }
-      res.json({ role: await roleRepo.setRolePermissions(req.params.id, requested) });
+      const updatedRole = await roleRepo.setRolePermissions((req.params.id as string), requested);
+      log.info(
+        "admin",
+        `${req.username} set ${updatedRole.name} permissions to [${requested.join(", ") || "none"}]`
+      );
+      res.json({ role: updatedRole });
     } catch (err) {
       console.error("[admin/role-permissions]", err);
       res.status(500).json({ error: "Server error" });

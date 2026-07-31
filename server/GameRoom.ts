@@ -13,6 +13,7 @@ import type {
 import { DEFAULT_SETTINGS, MAX_PLAYERS, MAX_CHAT_MESSAGE_LENGTH, MAX_CHAT_HISTORY } from "../app/lib/constants.js";
 import { hasPermission, type Permission } from "../app/lib/permissions.js";
 import * as adminRepo from "./db/AdminRepository.js";
+import { log } from "./logger.js";
 import { GameStateMachine } from "./GameStateMachine.js";
 import * as chatRepo from "./db/ChatRepository.js";
 import * as roleRepo from "./db/RoleRepository.js";
@@ -190,6 +191,10 @@ export class GameRoom {
     if (this.machine.state.phase !== "lobby") return;
     if (this.playerCount < 1) return;
 
+    log.info(
+      "game",
+      `${this.code} started by ${player.displayName} with ${this.playerCount} player(s)`
+    );
     this.machine.startBetting();
   }
 

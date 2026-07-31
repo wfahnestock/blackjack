@@ -30,6 +30,7 @@ import {
   dealerShouldHit,
 } from "./HandEvaluator.js";
 import { DealerBehaviorEngine } from "./DealerBehavior.js";
+import { log } from "./logger.js";
 function makeHand(bet = 0): Hand {
   return {
     handId: randomUUID(),
@@ -314,6 +315,7 @@ export class GameStateMachine {
       this.deck.reshuffle();
       this.hiLoCount = 0;
       this.broadcast("game:shuffle", {});
+      log.info("game", `${this.state.roomCode} shoe reshuffled`);
     }
 
     // Deal: p1, p2, ..., dealer(up), p1, p2, ..., dealer(hole)
