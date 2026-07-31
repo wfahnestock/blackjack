@@ -87,6 +87,23 @@ export class GameRoom {
     return this.machine.state;
   }
 
+  /**
+   * Pushes an externally-changed chip balance (an admin adjustment) into the
+   * live game state.
+   *
+   * Without this the change would be silently reverted: the round-end flush
+   * persists the in-memory `player.chips`, so a DB-only edit for someone
+   * currently seated gets overwritten when their round finishes. Returns true
+   * if the player was seated here.
+   */
+  syncPlayerChips(playerId: string, chips: number): boolean {
+    const player = this.machine.getPlayer(playerId);
+    if (!player) return false;
+    player.chips = chips;
+    this.broadcast("state:player-updated", player);
+    return true;
+  }
+
   addPlayer(
     socket: AppSocket,
     playerId: string,

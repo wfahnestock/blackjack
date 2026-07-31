@@ -90,6 +90,7 @@ export default function Room() {
       <ProfileModal
         playerId={profilePlayerId}
         onClose={() => setProfilePlayerId(null)}
+        selfPlayerId={playerId}
       />
 
       <GameTable

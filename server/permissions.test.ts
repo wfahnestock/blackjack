@@ -99,6 +99,43 @@ describe("default role permissions", () => {
   });
 });
 
+describe("in-game admin tab gating", () => {
+  // Mirrors showAdminTab in app/components/ui/ProfileModal.tsx: the quick-action
+  // tab appears only for staff who can actually do something, and never against
+  // yourself. Server still re-checks each action.
+  const QUICK_ACTIONS: Permission[] = [
+    "player.kick",
+    "player.mute",
+    "player.ban",
+    "player.unban",
+    "player.adjust_chips",
+  ];
+  const showAdminTab = (roles: { permissions: string[] }[], isSelf: boolean) =>
+    !isSelf && hasPermission(roles, "admin.access") && hasAnyPermission(roles, QUICK_ACTIONS);
+
+  test("shown to a moderator viewing another player", () => {
+    assert.equal(showAdminTab([role(DEFAULT_ROLE_PERMISSIONS.moderator)], false), true);
+  });
+
+  test("hidden when viewing your own profile", () => {
+    assert.equal(showAdminTab([role(DEFAULT_ROLE_PERMISSIONS.developer)], true), false);
+  });
+
+  test("hidden from ordinary players", () => {
+    assert.equal(showAdminTab([], false), false);
+    assert.equal(showAdminTab([role([])], false), false);
+  });
+
+  test("hidden from a role with console access but no actionable permission", () => {
+    // e.g. a read-only auditor: can open the console, can't act on players.
+    assert.equal(showAdminTab([role(["admin.access", "chat.clear"])], false), false);
+  });
+
+  test("hidden from a role with actions but no admin.access", () => {
+    assert.equal(showAdminTab([role(["player.kick"])], false), false);
+  });
+});
+
 describe("privilege-escalation guard", () => {
   // Mirrors outranks() in server/index.ts: you may only assign, grant, or edit
   // permissions you already hold yourself.

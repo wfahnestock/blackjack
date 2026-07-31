@@ -88,6 +88,7 @@ export default function Lobby() {
       <ProfileModal
         playerId={profilePlayerId}
         onClose={() => setProfilePlayerId(null)}
+        selfPlayerId={playerId}
       />
 
       {/* Mobile chat overlay */}

@@ -3,6 +3,7 @@ import { Modal } from "./Modal";
 import { DisplayName } from "./DisplayName";
 import { useAuth } from "~/lib/AuthContext";
 import { formatChips } from "~/lib/handUtils";
+import { hasAnyPermission, hasPermission, type Permission } from "~/lib/permissions";
 import type { RoleInfo, AchievementInfo, AchievementCategory } from "~/lib/types";
 
 interface PlayerProfile {
@@ -29,20 +30,65 @@ interface PlayerProfile {
   };
 }
 
-type ProfileTab = "stats" | "achievements";
+type ProfileTab = "stats" | "achievements" | "admin";
+
+/** Moderation state of the viewed player, loaded only for staff. */
+interface AdminState {
+  bannedAt: string | null;
+  banReason: string | null;
+  mutedUntil: string | null;
+}
+
+/** Actions surfaced in the in-game admin tab, each behind its own permission. */
+const QUICK_ACTION_PERMISSIONS: Permission[] = [
+  "player.kick",
+  "player.mute",
+  "player.ban",
+  "player.unban",
+  "player.adjust_chips",
+];
 
 interface ProfileModalProps {
   playerId: string | null;
   onClose: () => void;
+  /** The viewer's own id, so we never offer admin actions against yourself. */
+  selfPlayerId?: string | null;
 }
 
-export function ProfileModal({ playerId, onClose }: ProfileModalProps) {
-  const { token } = useAuth();
+export function ProfileModal({ playerId, onClose, selfPlayerId }: ProfileModalProps) {
+  const { token, user } = useAuth();
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [achievements, setAchievements] = useState<AchievementInfo[] | null>(null);
   const [tab, setTab] = useState<ProfileTab>("stats");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [adminState, setAdminState] = useState<AdminState | null>(null);
+
+  const isSelf = Boolean(playerId && selfPlayerId && playerId === selfPlayerId);
+  // Staff-only, and never against yourself. The server re-checks every call;
+  // this only decides whether the tab renders.
+  const showAdminTab =
+    !isSelf &&
+    hasPermission(user?.roles, "admin.access") &&
+    hasAnyPermission(user?.roles, QUICK_ACTION_PERMISSIONS);
+
+  /** Reloads the target's moderation state (ban/mute) after an admin action. */
+  async function refreshAdminState(id: string) {
+    try {
+      const res = await fetch(`/api/admin/players/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      setAdminState({
+        bannedAt: data.player?.bannedAt ?? null,
+        banReason: data.player?.banReason ?? null,
+        mutedUntil: data.player?.mutedUntil ?? null,
+      });
+    } catch {
+      /* non-fatal: the tab just won't show ban/mute status */
+    }
+  }
 
   useEffect(() => {
     if (!playerId) return;
@@ -50,7 +96,10 @@ export function ProfileModal({ playerId, onClose }: ProfileModalProps) {
     setError("");
     setProfile(null);
     setAchievements(null);
+    setAdminState(null);
     setTab("stats");
+
+    if (showAdminTab) refreshAdminState(playerId);
 
     Promise.all([
       fetch(`/api/players/${playerId}/profile`, {
@@ -146,7 +195,30 @@ export function ProfileModal({ playerId, onClose }: ProfileModalProps) {
                 </span>
               )}
             </button>
+            {showAdminTab && (
+              <button
+                onClick={() => setTab("admin")}
+                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  tab === "admin"
+                    ? "bg-gray-700 text-amber-300"
+                    : "text-amber-400/70 hover:text-amber-300"
+                }`}
+              >
+                🛡️ Admin
+              </button>
+            )}
           </div>
+
+          {tab === "admin" && showAdminTab && playerId && (
+            <AdminActions
+              targetId={playerId}
+              targetName={profile.displayName}
+              token={token}
+              roles={user?.roles}
+              adminState={adminState}
+              onChanged={() => refreshAdminState(playerId)}
+            />
+          )}
 
           {/* Stats tab */}
           {tab === "stats" && (
@@ -388,6 +460,228 @@ function AchievementCard({ achievement }: { achievement: AchievementInfo }) {
       {unlocked && (
         <i className="fa-solid fa-check text-emerald-400 text-xs ml-auto shrink-0" />
       )}
+    </div>
+  );
+}
+
+// ─── In-game admin quick actions ─────────────────────────────────────────────
+
+const ADMIN_BTN =
+  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
+/**
+ * Moderation actions against the player whose profile is open, shown at the
+ * table so staff don't have to switch to the console for routine calls. Each
+ * control is gated on the viewer's permissions, and the server re-checks every
+ * request, so hiding a button is convenience and not the security boundary.
+ */
+function AdminActions({
+  targetId,
+  targetName,
+  token,
+  roles,
+  adminState,
+  onChanged,
+}: {
+  targetId: string;
+  targetName: string;
+  token: string | null;
+  roles: RoleInfo[] | undefined;
+  adminState: AdminState | null;
+  onChanged: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [chips, setChips] = useState("");
+  const [reason, setReason] = useState("");
+
+  const can = (p: Permission) => hasPermission(roles, p);
+  const banned = Boolean(adminState?.bannedAt);
+  const muted = Boolean(
+    adminState?.mutedUntil && new Date(adminState.mutedUntil).getTime() > Date.now()
+  );
+
+  async function run(path: string, init: RequestInit, okMsg: string) {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch(path, {
+        ...init,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+          ...(init.headers ?? {}),
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as any).error ?? `Failed (${res.status})`);
+      setMsg(okMsg);
+      onChanged();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-gray-500">Acting on</span>
+        <span className="font-semibold text-gray-200">{targetName}</span>
+        {banned && (
+          <span className="rounded bg-red-900/70 px-1.5 py-0.5 text-red-200">banned</span>
+        )}
+        {muted && (
+          <span className="rounded bg-amber-900/70 px-1.5 py-0.5 text-amber-200">muted</span>
+        )}
+      </div>
+
+      {err && (
+        <p className="rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-1.5 text-xs text-red-300">
+          {err}
+        </p>
+      )}
+      {msg && (
+        <p className="rounded-lg border border-emerald-900/60 bg-emerald-950/40 px-3 py-1.5 text-xs text-emerald-300">
+          {msg}
+        </p>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        {can("player.kick") && (
+          <button
+            disabled={busy}
+            className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+            onClick={() => run(`/api/admin/players/${targetId}/kick`, { method: "POST" }, "Kicked")}
+          >
+            Kick from table
+          </button>
+        )}
+
+        {can("player.mute") &&
+          (muted ? (
+            <button
+              disabled={busy}
+              className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+              onClick={() =>
+                run(
+                  `/api/admin/players/${targetId}/mute`,
+                  { method: "POST", body: JSON.stringify({ minutes: null }) },
+                  "Unmuted"
+                )
+              }
+            >
+              Unmute
+            </button>
+          ) : (
+            <>
+              {[10, 60].map((m) => (
+                <button
+                  key={m}
+                  disabled={busy}
+                  className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+                  onClick={() =>
+                    run(
+                      `/api/admin/players/${targetId}/mute`,
+                      { method: "POST", body: JSON.stringify({ minutes: m }) },
+                      `Muted ${m}m`
+                    )
+                  }
+                >
+                  Mute {m}m
+                </button>
+              ))}
+            </>
+          ))}
+
+        {banned
+          ? can("player.unban") && (
+              <button
+                disabled={busy}
+                className={`${ADMIN_BTN} bg-emerald-700 text-white hover:bg-emerald-600`}
+                onClick={() =>
+                  run(`/api/admin/players/${targetId}/unban`, { method: "POST" }, "Unbanned")
+                }
+              >
+                Unban
+              </button>
+            )
+          : can("player.ban") && (
+              <button
+                disabled={busy}
+                className={`${ADMIN_BTN} bg-red-700 text-white hover:bg-red-600`}
+                onClick={() =>
+                  run(
+                    `/api/admin/players/${targetId}/ban`,
+                    { method: "POST", body: JSON.stringify({ reason: reason || null }) },
+                    "Banned"
+                  )
+                }
+              >
+                Ban account
+              </button>
+            )}
+      </div>
+
+      {can("player.ban") && !banned && (
+        <input
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="Ban reason (optional)"
+          className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-100 focus:border-gray-500 focus:outline-none"
+        />
+      )}
+
+      {can("player.adjust_chips") && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={chips}
+            onChange={(e) => setChips(e.target.value)}
+            placeholder="Chips ±"
+            inputMode="numeric"
+            className="w-28 rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-100 focus:border-gray-500 focus:outline-none"
+          />
+          <button
+            disabled={busy || !chips || Number.isNaN(Number(chips))}
+            className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+            onClick={() =>
+              run(
+                `/api/admin/players/${targetId}/chips`,
+                { method: "POST", body: JSON.stringify({ delta: Number(chips) }) },
+                "Chips adjusted"
+              )
+            }
+          >
+            Adjust
+          </button>
+          <button
+            disabled={busy || !chips || Number.isNaN(Number(chips))}
+            className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+            onClick={() =>
+              run(
+                `/api/admin/players/${targetId}/chips`,
+                { method: "POST", body: JSON.stringify({ set: Number(chips) }) },
+                "Chips set"
+              )
+            }
+          >
+            Set
+          </button>
+          <span className="text-[11px] text-gray-500">
+            Applies immediately, at the table too if they're seated.
+          </span>
+        </div>
+      )}
+
+      <a
+        href="/admin"
+        className="text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline"
+      >
+        Open full admin console →
+      </a>
     </div>
   );
 }

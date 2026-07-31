@@ -1060,7 +1060,21 @@ app.post(
         res.status(400).json({ error: "Provide a numeric `set` or `delta`" });
         return;
       }
-      log.info("admin", `${req.username} set chips of ${(req.params.id as string)} to ${chips}`);
+      // If the player is seated at a live table, push the new balance into the
+      // in-memory game state too. The round-end flush writes that value back to
+      // the DB, so skipping this would quietly undo the adjustment.
+      let syncedToTable = false;
+      for (const room of rooms.values()) {
+        if (room.syncPlayerChips(req.params.id as string, chips)) {
+          syncedToTable = true;
+          break;
+        }
+      }
+      log.info(
+        "admin",
+        `${req.username} set chips of ${(req.params.id as string)} to ${chips}` +
+          (syncedToTable ? " (synced to live table)" : "")
+      );
       res.json({ chips });
     } catch (err) {
       console.error("[admin/chips]", err);

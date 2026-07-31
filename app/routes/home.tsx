@@ -114,6 +114,7 @@ export default function Home() {
     <ProfileModal
       playerId={profileOpen ? user.playerId : null}
       onClose={() => setProfileOpen(false)}
+      selfPlayerId={user.playerId}
     />
 
     {/* Top nav bar */}
