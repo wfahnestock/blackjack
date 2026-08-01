@@ -555,7 +555,13 @@ function AdminActions({
           <button
             disabled={busy}
             className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
-            onClick={() => run(`/api/admin/players/${targetId}/kick`, { method: "POST" }, "Kicked")}
+            onClick={() =>
+              run(
+                `/api/admin/players/${targetId}/kick`,
+                { method: "POST", body: JSON.stringify({ reason: reason || null }) },
+                "Kicked"
+              )
+            }
           >
             Kick from table
           </button>
@@ -626,11 +632,12 @@ function AdminActions({
             )}
       </div>
 
-      {can("player.ban") && !banned && (
+      {/* Shared by kick and ban — both show it to the player. */}
+      {(can("player.kick") || (can("player.ban") && !banned)) && (
         <input
           value={reason}
           onChange={(e) => setReason(e.target.value)}
-          placeholder="Ban reason (optional)"
+          placeholder="Reason (optional, shown to the player)"
           className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-100 focus:border-gray-500 focus:outline-none"
         />
       )}

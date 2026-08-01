@@ -14,8 +14,8 @@
     "db:seed": "tsx server/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "simulate": "tsx scripts/simulate.ts",
-    "test": "node --import tsx --test \"server/*.test.ts\"",
-    "test:watch": "node --import tsx --test --watch \"server/*.test.ts\""
+    "test": "node --import tsx --test \"server/*.test.ts\" \"app/lib/*.test.ts\"",
+    "test:watch": "node --import tsx --test --watch \"server/*.test.ts\" \"app/lib/*.test.ts\""
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",

@@ -715,13 +715,16 @@ body {
  *   red — both read fine up close but feel swallowed by the background.
  */
 
+/* Each loop must travel a whole number of tiles, otherwise the starfield jumps
+   when the animation restarts. These are 2x the tile sizes below (68x56 far,
+   112x88 near) — keep them in step if either tile size changes. */
 @keyframes cs-void-drift-far {
   from { background-position: 0 0; }
-  to   { background-position: 120px 100px; }
+  to   { background-position: 136px 112px; }
 }
 @keyframes cs-void-drift-near {
   from { background-position: 0 0; }
-  to   { background-position: -180px 140px; }
+  to   { background-position: -224px 176px; }
 }
 
 .cs-face-void {
@@ -776,7 +779,10 @@ body {
     radial-gradient(circle 0.5px at 64% 70%, rgba(255,255,255,0.20) 0%, transparent 100%),
     radial-gradient(circle 0.5px at 90% 82%, rgba(220,225,255,0.22) 0%, transparent 100%),
     radial-gradient(circle 0.5px at 33% 47%, rgba(255,255,255,0.20) 0%, transparent 100%);
-  background-size: 120px 100px;
+  /* Tile is deliberately smaller than a card (~56x80): at the old 120x100 only
+     about a third of these stars ever landed on the card, which is what made
+     the skin look sparse. Smaller tile ≈ 3x the visible star density. */
+  background-size: 68px 56px;
   background-repeat: repeat;
   animation: cs-void-drift-far 32s linear infinite;
   transform: translate(var(--void-fx, 0px), var(--void-fy, 0px));
@@ -809,7 +815,10 @@ body {
     radial-gradient(ellipse 2px 1px at 97% 70%, rgba(255,255,255,0.28) 0%, transparent 100%),
     radial-gradient(ellipse 1px 2px at 50%  2%, rgba(255,255,255,0.28) 0%, transparent 100%),
     radial-gradient(ellipse 1px 2px at 50% 98%, rgba(255,255,255,0.26) 0%, transparent 100%);
-  background-size: 180px 140px;
+  /* Near plane stays a coarser tile than the far one so the two planes never
+     line up into a visible grid. Still under one tile per card, so no repeat
+     is perceptible — just ~2.5x more bright stars on screen. */
+  background-size: 112px 88px;
   background-repeat: repeat;
   animation: cs-void-drift-near 20s linear infinite;
   transform: translate(var(--void-px, 0px), var(--void-py, 0px));
@@ -866,7 +875,10 @@ body {
     radial-gradient(circle 0.5px at 64% 70%, rgba(255,255,255,0.20) 0%, transparent 100%),
     radial-gradient(circle 0.5px at 90% 82%, rgba(220,225,255,0.22) 0%, transparent 100%),
     radial-gradient(circle 0.5px at 33% 47%, rgba(255,255,255,0.20) 0%, transparent 100%);
-  background-size: 120px 100px;
+  /* Tile is deliberately smaller than a card (~56x80): at the old 120x100 only
+     about a third of these stars ever landed on the card, which is what made
+     the skin look sparse. Smaller tile ≈ 3x the visible star density. */
+  background-size: 68px 56px;
   background-repeat: repeat;
   animation: cs-void-drift-far 32s linear infinite;
   pointer-events: none;
@@ -894,7 +906,10 @@ body {
     radial-gradient(ellipse 2px 1px at 97% 70%, rgba(255,255,255,0.28) 0%, transparent 100%),
     radial-gradient(ellipse 1px 2px at 50%  2%, rgba(255,255,255,0.28) 0%, transparent 100%),
     radial-gradient(ellipse 1px 2px at 50% 98%, rgba(255,255,255,0.26) 0%, transparent 100%);
-  background-size: 180px 140px;
+  /* Near plane stays a coarser tile than the far one so the two planes never
+     line up into a visible grid. Still under one tile per card, so no repeat
+     is perceptible — just ~2.5x more bright stars on screen. */
+  background-size: 112px 88px;
   background-repeat: repeat;
   animation: cs-void-drift-near 20s linear infinite;
   pointer-events: none;
@@ -906,6 +921,205 @@ body {
   background-image: none !important;
   background-color: transparent !important;
   border-color: #18183a !important;
+}
+
+/* ─── Card skin: Singularity ──────────────────────────────────────────────────
+ *
+ * A live black hole. Built from four layers with no extra DOM, reusing the
+ * elements PlayingCard already renders:
+ *
+ *   outer element  → deep space, starfield and the disk's ambient glow
+ *   ::before       → the lensed band arcing over the top of the hole. This is
+ *                    the cue that makes it read as a black hole rather than a
+ *                    generic glowing ring, so it stays crisp and static.
+ *   ::after        → the accretion disk: a conic gradient masked into a ring,
+ *                    flattened with rotateX and rotated on a loop. Doppler
+ *                    beaming (approaching side brighter) is baked into the
+ *                    gradient rather than layered on top.
+ *   > div (back)   → the event horizon: a black disc ringed by the photon ring.
+ *
+ * Paint order is set explicitly with z-index because a pseudo-element's default
+ * order would otherwise put the disk on top of the horizon.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+@keyframes cs-sing-spin-back {
+  from { transform: translate(-50%, -50%) rotateX(74deg) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotateX(74deg) rotate(360deg); }
+}
+@keyframes cs-sing-spin-face {
+  from { transform: translate(-50%, -50%) rotateX(70deg) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotateX(70deg) rotate(360deg); }
+}
+
+/* Shared starfield + ambient glow, kept sparse so the disk stays the subject. */
+.cs-face-singularity,
+.cs-back-singularity {
+  position: relative !important;
+  overflow: hidden !important;
+  background-color: #04050a !important;
+  background-image:
+    radial-gradient(circle .6px at 14% 20%, rgba(255,255,255,.50) 0%, transparent 100%),
+    radial-gradient(circle .6px at 72% 11%, rgba(255,255,255,.42) 0%, transparent 100%),
+    radial-gradient(circle .6px at 31% 82%, rgba(255,240,220,.45) 0%, transparent 100%),
+    radial-gradient(circle .6px at 87% 74%, rgba(255,255,255,.38) 0%, transparent 100%),
+    radial-gradient(circle .6px at  6% 55%, rgba(255,255,255,.34) 0%, transparent 100%),
+    radial-gradient(circle .5px at 55% 33%, rgba(255,255,255,.28) 0%, transparent 100%) !important;
+  background-size: 44px 58px !important;
+  background-repeat: repeat !important;
+  border-color: #1a1008 !important;
+}
+
+/* ── Card back: the full spectacle, hole dead centre ── */
+.cs-back-singularity {
+  box-shadow:
+    0 4px 14px #000000f0,
+    inset 0 0 22px 8px #00000090,
+    inset 0 0 14px 3px #2a120040,
+    inset 0 0 0 1px #ffffff05 !important;
+}
+
+/* Lensed band over the top */
+.cs-back-singularity::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 47%;
+  width: 64%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border-top: 2px solid rgba(255,206,146,.92);
+  border-left: 2px solid rgba(255,178,100,.34);
+  border-right: 2px solid rgba(255,178,100,.34);
+  border-bottom: none;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Accretion disk */
+.cs-back-singularity::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 96%;
+  aspect-ratio: 1;
+  background: conic-gradient(from 0deg,
+    #fff2d6   0deg,   /* approaching side — Doppler brightened */
+    #ffa348  46deg,
+    #b85a1c  96deg,
+    #6a3010 150deg,
+    #3c1a08 186deg,   /* receding side — dimmed */
+    #6a3010 224deg,
+    #c96e24 280deg,
+    #ffc781 326deg,
+    #fff2d6 360deg);
+  /* closest-side keeps the gradient's outer edge inside the element. With the
+     default farthest-corner the ring was still opaque at the left/right bounds
+     and got clipped into a hard-edged slab instead of an ellipse. */
+  -webkit-mask: radial-gradient(circle closest-side, transparent 30%, #000 42%, #000 86%, transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent 30%, #000 42%, #000 86%, transparent 100%);
+  animation: cs-sing-spin-back 7s linear infinite;
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Event horizon: reuses the inner frame element as the black disc. */
+.cs-back-singularity > div {
+  position: relative;
+  z-index: 3;
+  width: 39% !important;
+  height: auto !important;
+  aspect-ratio: 1 !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 50% !important;
+  background-image: none !important;
+  background-color: #000 !important;
+  box-shadow:
+    0 0 0 1.5px rgba(255,214,150,.95),
+    0 0 10px 2px rgba(255,150,50,.5);
+}
+
+/* ── Card face ──
+   The hole is centred and spans most of the card. It stays clear of the rank
+   because the disk is flattened by rotateX: at ~88% width it's only ~30% as
+   tall, so it occupies a horizontal band across the middle while the glyphs
+   live in the top-left and bottom-right corners. */
+.cs-face-singularity {
+  box-shadow:
+    0 2px 8px #000000d0,
+    inset 0 0 18px 6px #00000080,
+    inset 0 0 0 1px #ffffff05 !important;
+}
+
+/* Centred: the rank glyphs sit in opposite corners, so the middle of the card
+   is free. Kept dimmer than the back so it never competes with the rank.
+   Note the disk (::before, z-index 1) deliberately paints OVER the horizon
+   (::after, z-index 0) here — the near edge of a disk passes in front of the
+   hole. The back does the reverse so its lensed band reads correctly. */
+.cs-face-singularity::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 88%;
+  aspect-ratio: 1;
+  background: conic-gradient(from 0deg,
+    rgba(255,242,214,.72)   0deg,
+    rgba(255,163,72,.60)   46deg,
+    rgba(184,90,28,.46)    96deg,
+    rgba(106,48,16,.32)   150deg,
+    rgba(60,26,8,.24)     186deg,
+    rgba(106,48,16,.32)   224deg,
+    rgba(201,110,36,.48)  280deg,
+    rgba(255,199,129,.62) 326deg,
+    rgba(255,242,214,.72) 360deg);
+  -webkit-mask: radial-gradient(circle closest-side, transparent 28%, #000 40%, #000 84%, transparent 100%);
+  mask: radial-gradient(circle closest-side, transparent 28%, #000 40%, #000 84%, transparent 100%);
+  animation: cs-sing-spin-face 9s linear infinite;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Horizon for the face — sits behind the disk (see note above). */
+.cs-face-singularity::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 31%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #000;
+  box-shadow:
+    0 0 0 1.5px rgba(255,206,146,.75),
+    0 0 12px 3px rgba(255,150,50,.35);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Rank/suit ride above the artwork, warmed so they sit in the palette. */
+.cs-face-singularity > div {
+  position: relative;
+  z-index: 2;
+}
+.cs-face-singularity .text-gray-900 {
+  color: #f3e7d5 !important;
+  text-shadow: 0 1px 3px #000, 0 0 6px #000 !important;
+}
+.cs-face-singularity .text-red-600 {
+  color: #ff7a5c !important;
+  text-shadow: 0 1px 3px #000, 0 0 6px #000 !important;
+}
+
+/* Respect reduced-motion: keep the artwork, drop the rotation. */
+@media (prefers-reduced-motion: reduce) {
+  .cs-back-singularity::after,
+  .cs-face-singularity::before {
+    animation: none;
+  }
 }
 
 /* ─── Table backgrounds ──────────────────────────────────────────────────────

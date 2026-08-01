@@ -524,6 +524,26 @@ export class GameStateMachine {
     this.advanceTurn();
   }
 
+  /**
+   * Called after a player is removed from the table outright; a staff kick, or
+   * a voluntary leave mid-round.
+   *
+   * Without this the round hangs: activePlayerId still points at someone who is
+   * no longer in state, so the turn timer eventually fires handleStand() for a
+   * player getPlayer() can't find, that returns early, and the turn never
+   * advances. Everyone else is stuck staring at a dead table.
+   */
+  handlePlayerRemoved(playerId: string): void {
+    if (this.state.phase !== "player-turn") return;
+    if (this.state.activePlayerId !== playerId) return;
+
+    this.clearTimer();
+    // Clear first so advanceTurn() doesn't try to update the departed player.
+    this.state.activePlayerId = null;
+    this.state.activeHandId = null;
+    this.advanceTurn();
+  }
+
   private advanceTurn(): void {
     this.clearTimer();
     // Mark active player as waiting if all hands done — but never overwrite "disconnected".

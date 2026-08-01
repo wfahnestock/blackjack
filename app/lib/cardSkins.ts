@@ -62,6 +62,12 @@ export const CARD_SKINS: CardSkinDef[] = [
     description: "A window into deep space — stars drift slowly, edges bend toward nothing",
     cost:        15_000,
   },
+  {
+    key:         "singularity",
+    label:       "Singularity",
+    description: "A living black hole — the accretion disk turns, light bends over the horizon, nothing escapes",
+    cost:        75_000,
+  },
 ];
 
 /** Set of all valid skin keys, for server-side validation. */

@@ -1,20 +1,15 @@
-// Singleton audio instance for button-click feedback.
-// Module-level so it persists across renders without a React context.
+import { playSound } from "./soundManager.js";
 
-let audio: HTMLAudioElement | null = null;
-
-function getAudio(): HTMLAudioElement | null {
-  if (typeof window === "undefined") return null;
-  if (!audio) {
-    audio = new Audio("/sounds/button_click.mp3");
-    audio.preload = "auto";
-  }
-  return audio;
+/**
+ * UI click feedback. Kept as a named helper because it's called from a dozen
+ * button handlers; the actual playback (and mute/volume) lives in the shared
+ * sound manager so this respects the user's settings like everything else.
+ */
+export function playButtonClick(): void {
+  playSound("button_click");
 }
 
-export function playButtonClick(): void {
-  const a = getAudio();
-  if (!a) return;
-  a.currentTime = 0;
-  a.play().catch(() => {});
+/** Chip-specific click, used when adding to a bet. */
+export function playChipClick(): void {
+  playSound("chips");
 }

@@ -301,6 +301,13 @@ export interface ServerToClientEvents {
 
   "game:bankruptcy-relief": (payload: { playerId: string }) => void;
 
+  /**
+   * Sent to a player who has been kicked from a table by staff. The client
+   * returns to the main menu and shows why. `reason` is null when the staff
+   * member didn't give one.
+   */
+  "game:kicked": (payload: { reason: string | null }) => void;
+
   "error": (payload: { code: string; message: string }) => void;
   "notification": (payload: { type: "info" | "warning"; message: string }) => void;
 

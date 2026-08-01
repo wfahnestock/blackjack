@@ -7,6 +7,7 @@ import { useSocket } from "~/lib/useSocket";
 import { useGameState } from "~/lib/useGameState";
 import { usePlayer } from "~/lib/usePlayer";
 import { useSoundEffects } from "~/lib/useSoundEffects";
+import { useKickNotice } from "~/lib/useKickNotice";
 import { useChat } from "~/lib/useChat";
 import { useAuth } from "~/lib/AuthContext";
 import { clearGameState } from "~/lib/socket";
@@ -21,6 +22,7 @@ export default function Room() {
   const socket = useSocket();
   const state = useGameState();
   const { playerId } = usePlayer();
+  useKickNotice(); // staff kick → back to the menu with an explanation
   const { user } = useAuth();
   useSoundEffects(state, playerId);
   const chat = useChat(socket);

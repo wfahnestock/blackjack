@@ -3,7 +3,7 @@ import { CHIP_DENOMINATIONS } from "~/lib/constants";
 import type { ChipDenomination } from "~/lib/constants";
 import type { GameSettings } from "~/lib/types";
 import { formatChips } from "~/lib/handUtils";
-import { playButtonClick } from "~/lib/buttonSound";
+import { playButtonClick, playChipClick } from "~/lib/buttonSound";
 import { chipStyle, chipCenterStyle } from "~/lib/chipStyle";
 
 interface BettingControlsProps {
@@ -37,7 +37,7 @@ export function BettingControls({
   const addChip = (denom: ChipDenomination) => {
     const next = pendingBet + denom;
     if (next <= settings.maxBet && next <= playerChips) {
-      playButtonClick();
+      playChipClick(); // chip clink rather than the generic UI click
       commit(next, [...history, denom]);
     }
   };
@@ -59,7 +59,7 @@ export function BettingControls({
   };
 
   const allIn = () => {
-    playButtonClick();
+    playChipClick();
     commit(Math.min(settings.maxBet, playerChips), []);
   };
 

@@ -9,6 +9,16 @@ import { NAME_EFFECTS, nameEffectClass, type NameEffectDef } from "~/lib/nameEff
 import { CARD_SKINS, cardSkinFaceClass, cardSkinBackClass, type CardSkinDef } from "~/lib/cardSkins";
 import { TABLE_BGS, tableBgClass, type TableBgDef } from "~/lib/tableBgs";
 import { PlayingCard } from "~/components/game/PlayingCard";
+import { useSoundSettings } from "~/lib/useSoundSettings";
+import type { ChipSound } from "~/lib/soundManager";
+
+/** Chip-click options, ordered brightest to most understated. */
+const CHIP_SOUND_OPTIONS: { value: ChipSound; label: string; hint: string }[] = [
+  { value: "clink", label: "Clink", hint: "Bright ceramic click" },
+  { value: "stack", label: "Stack", hint: "Rounder, like chips settling" },
+  { value: "tick", label: "Tick", hint: "Very short and dry" },
+  { value: "classic", label: "Classic", hint: "The original sample" },
+];
 
 export function meta() {
   return [{ title: "Account Settings — Blackjack" }];
@@ -37,6 +47,17 @@ interface SkinShopState {
 export default function Settings() {
   const navigate = useNavigate();
   const { user, token, updateUserProfile, updateEquippedEffect, updateUserChips, updateEquippedCardSkin, updateEquippedTableBg } = useAuth();
+  const {
+    muted: soundMuted,
+    volume: soundVolume,
+    tableSounds,
+    chipSound,
+    setMuted: setSoundMuted,
+    setVolume: setSoundVolume,
+    setTableSounds,
+    setChipSound,
+    preview: previewSound,
+  } = useSoundSettings();
 
   if (!user) return <Navigate to="/login" replace />;
 
@@ -418,6 +439,100 @@ export default function Settings() {
             Back to Home
           </Button>
         </form>
+
+        {/* ── Sound ── */}
+        {/* Outside the form on purpose: these are local device preferences
+            (localStorage), not account settings, so they apply instantly and
+            must not be swept up by "Save Changes". */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
+          <div>
+            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sound</h2>
+            <p className="text-xs text-gray-600 mt-1">
+              Saved on this device and applied immediately.
+            </p>
+          </div>
+
+          <label className="flex items-center justify-between gap-4 cursor-pointer">
+            <span className="text-sm text-gray-300">Mute all sound</span>
+            <input
+              type="checkbox"
+              checked={soundMuted}
+              onChange={(e) => setSoundMuted(e.target.checked)}
+              className="w-4 h-4 accent-emerald-500 cursor-pointer"
+            />
+          </label>
+
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className={`text-sm ${soundMuted ? "text-gray-600" : "text-gray-300"}`}>
+                Volume
+              </span>
+              <span className="text-xs tabular-nums text-gray-500">
+                {Math.round(soundVolume * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={soundVolume}
+              disabled={soundMuted}
+              onChange={(e) => setSoundVolume(Number(e.target.value))}
+              onMouseUp={previewSound}
+              onTouchEnd={previewSound}
+              className="w-full accent-emerald-500 disabled:opacity-40 cursor-pointer"
+            />
+          </div>
+
+          <label className="flex items-start justify-between gap-4 cursor-pointer">
+            <span>
+              <span className={`text-sm ${soundMuted ? "text-gray-600" : "text-gray-300"}`}>
+                Table sounds
+              </span>
+              <span className="block text-xs text-gray-600 mt-0.5">
+                Hear other players hit, stand, double and hit blackjack. Turn off to
+                only hear your own seat.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={tableSounds}
+              disabled={soundMuted}
+              onChange={(e) => setTableSounds(e.target.checked)}
+              className="w-4 h-4 mt-0.5 shrink-0 accent-emerald-500 disabled:opacity-40 cursor-pointer"
+            />
+          </label>
+
+          <div className="flex flex-col gap-2">
+            <div>
+              <span className={`text-sm ${soundMuted ? "text-gray-600" : "text-gray-300"}`}>
+                Chip sound
+              </span>
+              <span className="block text-xs text-gray-600 mt-0.5">
+                Plays every time you add to a bet. Click one to hear it.
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {CHIP_SOUND_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  disabled={soundMuted}
+                  onClick={() => setChipSound(opt.value)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                    chipSound === opt.value
+                      ? "bg-emerald-600 text-white"
+                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                  }`}
+                  title={opt.hint}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         {/* ── Name Effects shop ── */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">

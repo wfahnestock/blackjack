@@ -966,7 +966,7 @@ io.on("connection", (socket: AppSocket) => {
 // roles hold which keys lives on the roles table and is editable at runtime, so
 // access can be retuned without a deploy. The server always re-checks.
 
-/** Force every live socket for a player to disconnect (used by ban and kick). */
+/** Force every live socket for a player to disconnect (used by ban). */
 function disconnectPlayer(playerId: string, message: string): void {
   for (const [, s] of io.sockets.sockets) {
     const sock = s as AppSocket;
@@ -975,6 +975,45 @@ function disconnectPlayer(playerId: string, message: string): void {
       sock.disconnect(true);
     }
   }
+}
+
+/**
+ * Removes a player from whatever room they're in and tells their client why.
+ *
+ * Deliberately does NOT kill the socket. Killing it routed the kick through the
+ * "disconnecting" handler, which calls removePlayer() with intentional=false —
+ * the accidental-drop path, which keeps the player seated and merely flags them
+ * "disconnected" so they can reconnect. A kick is intentional, so the seat has
+ * to be freed straight away. Dropping the socket also made socket.io silently
+ * auto-reconnect, leaving the client attached to nothing and the table dead.
+ *
+ * Returns true if the player was actually seated somewhere.
+ */
+function kickFromRoom(playerId: string, reason: string | null): boolean {
+  let removed = false;
+  for (const [, s] of io.sockets.sockets) {
+    const sock = s as AppSocket;
+    if (sock.data?.playerId !== playerId) continue;
+
+    // Notify first: once removePlayer() runs the socket has left the room.
+    sock.emit("game:kicked", { reason });
+
+    const code = socketRoom.get(sock.id);
+    if (!code) continue;
+    const room = rooms.get(code);
+    if (room) {
+      room.removePlayer(sock.id, true); // intentional → frees the seat now
+      if (room.isEmpty) {
+        room.destroy();
+        rooms.delete(code);
+        log.info("room", `${code} closed (empty)`);
+      }
+      broadcastRoomList();
+      removed = true;
+    }
+    socketRoom.delete(sock.id);
+  }
+  return removed;
 }
 
 app.get(
@@ -1143,13 +1182,15 @@ app.post(
   requirePermission("player.kick"),
   async (req: AuthedRequest, res) => {
     try {
-      const reason = typeof req.body?.reason === "string" ? req.body.reason.slice(0, 200) : null;
-      disconnectPlayer(
-        (req.params.id as string),
-        reason ? `Kicked from the table: ${reason}` : "You were kicked from the table."
+      const reason = typeof req.body?.reason === "string" ? req.body.reason.trim().slice(0, 200) : null;
+      const wasSeated = kickFromRoom((req.params.id as string), reason || null);
+      log.info(
+        "admin",
+        `${req.username} kicked ${(req.params.id as string)}` +
+          (wasSeated ? "" : " (not at a table)") +
+          (reason ? ` — ${reason}` : "")
       );
-      log.info("admin", `${req.username} kicked ${(req.params.id as string)}`);
-      res.json({ ok: true });
+      res.json({ ok: true, wasSeated });
     } catch (err) {
       console.error("[admin/kick]", err);
       res.status(500).json({ error: "Server error" });

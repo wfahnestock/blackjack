@@ -39,11 +39,13 @@ export function DealerFurniture({ shoe, hiLoCount, minBet, maxBet, slotRef }: De
                 "inset 0 4px 9px rgba(0,0,0,0.45), inset 0 -3px 3px rgba(255,255,255,0.10), 0 1px 3px rgba(0,0,0,0.45)",
             }}
           />
-          {/* stack of discarded card backs */}
-          <div className="absolute" style={{ left: 17, top: 7, transform: "scale(0.68) rotate(-5deg)", transformOrigin: "top left" }}>
+          {/* Stack of discarded card backs. The scale compensates for the
+              larger in-play card size so the tray itself looks unchanged
+              (58x82 * 0.61 matches the old 52x74 * 0.68). */}
+          <div className="absolute" style={{ left: 17, top: 7, transform: "scale(0.61) rotate(-5deg)", transformOrigin: "top left" }}>
             <PlayingCard card={BACK} small />
           </div>
-          <div className="absolute" style={{ left: 25, top: 11, transform: "scale(0.68) rotate(4deg)", transformOrigin: "top left" }}>
+          <div className="absolute" style={{ left: 25, top: 11, transform: "scale(0.61) rotate(4deg)", transformOrigin: "top left" }}>
             <PlayingCard card={BACK} small />
           </div>
           {/* front glass lip */}

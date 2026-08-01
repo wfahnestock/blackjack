@@ -15,6 +15,7 @@ import { INSURANCE_TIMER_SECONDS } from "~/lib/constants";
 import { computeHeroSeats } from "~/lib/seatLayout";
 import { useMediaQuery } from "~/lib/useMediaQuery";
 import { DealOriginContext } from "~/lib/dealOrigin";
+import { useSoundSettings } from "~/lib/useSoundSettings";
 
 const ACTIVE_PHASES: GameState["phase"][] = [
   "betting",
@@ -57,6 +58,7 @@ export function GameTable({
   onChatToggle,
 }: GameTableProps) {
   const { user } = useAuth();
+  const { muted: soundMuted, toggleMuted } = useSoundSettings();
   // Origin element (the shoe's dealing slot) that dealt cards fly out from.
   const shoeSlotRef = useRef<HTMLDivElement>(null);
   // Chips the player had when this game view opened, for the session NET readout.
@@ -186,6 +188,18 @@ export function GameTable({
 
         {/* Right */}
         <div className="flex items-center justify-end gap-3">
+          {/* Quick mute — the table fires a lot of audio, so this needs to be
+              reachable without leaving the game for the Settings page. */}
+          <button
+            onClick={toggleMuted}
+            title={soundMuted ? "Unmute sound" : "Mute sound"}
+            aria-label={soundMuted ? "Unmute sound" : "Mute sound"}
+            className={`flex items-center px-2.5 py-1 rounded-lg text-sm transition-colors hover:bg-white/5 ${
+              soundMuted ? "text-red-400 hover:text-red-300" : "text-gray-500 hover:text-gray-300"
+            }`}
+          >
+            <i className={`fa-solid ${soundMuted ? "fa-volume-xmark" : "fa-volume-high"}`} />
+          </button>
           {onChatToggle && (
             <button
               onClick={onChatToggle}

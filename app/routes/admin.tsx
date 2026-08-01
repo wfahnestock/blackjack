@@ -446,14 +446,29 @@ function PlayerDetail({
         show={can("player.kick") || can("player.mute") || can("player.ban") || can("player.unban")}
       >
         {can("player.kick") && (
-          <button
-            className={BTN_NEUTRAL}
-            onClick={() =>
-              act(() => api(`/api/admin/players/${p.id}/kick`, { method: "POST" }), "Kicked")
-            }
-          >
-            Kick from table
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              value={banReason}
+              onChange={(e) => setBanReason(e.target.value)}
+              placeholder="Reason (optional, shown to the player)"
+              className={`${INPUT} w-64`}
+            />
+            <button
+              className={BTN_NEUTRAL}
+              onClick={() =>
+                act(
+                  () =>
+                    api(`/api/admin/players/${p.id}/kick`, {
+                      method: "POST",
+                      body: JSON.stringify({ reason: banReason || null }),
+                    }),
+                  "Kicked"
+                )
+              }
+            >
+              Kick from table
+            </button>
+          </div>
         )}
 
         {can("player.mute") &&

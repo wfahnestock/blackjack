@@ -39,6 +39,63 @@ function withStubbedTimers<T>(fn: () => T): T {
   }
 }
 
+describe("handlePlayerRemoved — a kick mid-turn must not stall the round", () => {
+  test("play advances to the next player when the active one is removed", () => {
+    withStubbedTimers(() => {
+      const g = new GameStateMachine("TEST", DEFAULT_SETTINGS, () => {});
+      g.addPlayer(makePlayer("alice", { chips: 1000 }));
+      g.addPlayer(makePlayer("bob", { chips: 1000 }));
+
+      g.startBetting();
+      g.placeBet("alice", 100);
+      g.placeBet("bob", 100);
+      g.startDealing();
+      g.startPlayerTurn();
+
+      const active = g.state.activePlayerId;
+      assert.ok(active, "someone should be on turn");
+
+      // Staff kicks whoever is acting.
+      g.removePlayer(active!);
+      g.handlePlayerRemoved(active!);
+
+      // The turn must have moved on rather than pointing at the departed player.
+      assert.notEqual(g.state.activePlayerId, active);
+      assert.equal(
+        g.state.players.some((p) => p.playerId === active),
+        false,
+        "kicked player is gone from state"
+      );
+      // Either the remaining player is acting, or the round moved past player turns.
+      if (g.state.phase === "player-turn") {
+        assert.ok(g.state.activePlayerId, "the other player should now be acting");
+      }
+    });
+  });
+
+  test("removing a non-active player leaves the current turn alone", () => {
+    withStubbedTimers(() => {
+      const g = new GameStateMachine("TEST", DEFAULT_SETTINGS, () => {});
+      g.addPlayer(makePlayer("alice", { chips: 1000 }));
+      g.addPlayer(makePlayer("bob", { chips: 1000 }));
+
+      g.startBetting();
+      g.placeBet("alice", 100);
+      g.placeBet("bob", 100);
+      g.startDealing();
+      g.startPlayerTurn();
+
+      const active = g.state.activePlayerId!;
+      const other = g.state.players.find((p) => p.playerId !== active)!.playerId;
+
+      g.removePlayer(other);
+      g.handlePlayerRemoved(other);
+
+      assert.equal(g.state.activePlayerId, active, "active player is undisturbed");
+    });
+  });
+});
+
 describe("startDealing — disconnected players are not dealt in", () => {
   test("a disconnected player who had placed a bet gets no cards and keeps their chips", () => {
     withStubbedTimers(() => {

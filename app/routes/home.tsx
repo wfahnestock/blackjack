@@ -9,6 +9,8 @@ import { RoomBrowser } from "~/components/home/RoomBrowser";
 import { useAuth } from "~/lib/AuthContext";
 import { useSocket } from "~/lib/useSocket";
 import { hasPermission } from "~/lib/permissions";
+import { consumeKickNotice, type KickNotice } from "~/lib/useKickNotice";
+import { Modal } from "~/components/ui/Modal";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -40,6 +42,13 @@ export default function Home() {
   const [error, setError] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [joiningCode, setJoiningCode] = useState<string | null>(null);
+
+  // If staff kicked us from a table, useKickNotice sent us here and left the
+  // reason behind. Read it once on mount and explain what happened.
+  const [kickNotice, setKickNotice] = useState<KickNotice | null>(null);
+  useEffect(() => {
+    setKickNotice(consumeKickNotice());
+  }, []);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -116,6 +125,36 @@ export default function Home() {
       onClose={() => setProfileOpen(false)}
       selfPlayerId={user.playerId}
     />
+
+    {/* Shown once after staff removed this player from a table. */}
+    <Modal
+      isOpen={kickNotice !== null}
+      onClose={() => setKickNotice(null)}
+      title="Removed from table"
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-500/15 text-lg">
+            🛡️
+          </span>
+          <p className="text-sm text-gray-300 leading-relaxed">
+            A staff member removed you from that table. Your chips are unaffected
+            and you can join another table whenever you like.
+          </p>
+        </div>
+
+        {kickNotice?.reason && (
+          <div className="rounded-lg border border-gray-800 bg-gray-950/60 px-3 py-2">
+            <p className="text-[11px] uppercase tracking-widest text-gray-500">Reason</p>
+            <p className="mt-0.5 text-sm text-gray-200 break-words">{kickNotice.reason}</p>
+          </div>
+        )}
+
+        <Button variant="primary" size="md" onClick={() => setKickNotice(null)}>
+          Got it
+        </Button>
+      </div>
+    </Modal>
 
     {/* Top nav bar */}
     <nav className="sticky top-0 z-30 bg-gray-950/90 backdrop-blur border-b border-gray-800">

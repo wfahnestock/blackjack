@@ -66,7 +66,7 @@ export function PlayerHand({ hand, isActive, small = false, cardSkin }: PlayerHa
         {hand.cards.length === 0 && (
           <div
             className={`
-              ${small ? "w-[52px] h-[74px]" : "w-14 h-20"} rounded-lg
+              ${small ? "w-[58px] h-[82px]" : "w-14 h-20"} rounded-lg
               border-2 border-dashed border-gray-700
             `}
           />

@@ -190,6 +190,9 @@ export class GameRoom {
 
       // Intentional leave, or leaving from lobby/cleanup: remove entirely
       this.machine.removePlayer(playerId);
+      // If it was their turn, hand play on — otherwise the round would sit on a
+      // player who no longer exists and stall for everyone else.
+      this.machine.handlePlayerRemoved(playerId);
       // Reassign host if needed
       if (player.isHost && this.playerCount > 0) {
         const nextHost = this.machine.state.players[0];

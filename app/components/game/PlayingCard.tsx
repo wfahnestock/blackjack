@@ -52,8 +52,8 @@ export function PlayingCard({ card, small = false, className = "", style, skin, 
 
   const isRed = RED_SUITS.has(card.suit);
   const symbol = SUIT_SYMBOLS[card.suit];
-  const w = small ? "w-[52px]" : "w-14";
-  const h = small ? "h-[74px]" : "h-20";
+  const w = small ? "w-[58px]" : "w-14";
+  const h = small ? "h-[82px]" : "h-20";
   const text = small ? "text-sm" : "text-base";
   const faceClass = cardSkinFaceClass(skin);
 
@@ -85,8 +85,8 @@ export function PlayingCard({ card, small = false, className = "", style, skin, 
 }
 
 function CardBack({ small = false, className = "", style, skin, dealAnimate = false }: { small?: boolean; className?: string; style?: React.CSSProperties; skin?: string | null; dealAnimate?: boolean }) {
-  const w = small ? "w-[52px]" : "w-14";
-  const h = small ? "h-[74px]" : "h-20";
+  const w = small ? "w-[58px]" : "w-14";
+  const h = small ? "h-[82px]" : "h-20";
   const backClass = cardSkinBackClass(skin);
   const flyRef = useDealFlyIn<HTMLDivElement>(dealAnimate);
 
