@@ -33,17 +33,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm flex flex-col gap-8">
+    <div className="casino-felt min-h-screen flex items-center justify-center px-4">
+      <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center">
-          <div className="text-6xl mb-3 select-none">♠</div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Blackjack</h1>
-          <p className="text-gray-500 mt-2">Sign in to your account</p>
+          <div className="mb-1 select-none text-4xl text-[var(--brass)]">♠</div>
+          <h1 className="font-display text-4xl text-[var(--parchment)]">Blackjack</h1>
+          <p className="casino-eyebrow mt-2">Sign in to your account</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4"
+          className="casino-panel flex flex-col gap-4 p-6"
         >
           <Input
             label="Username"
@@ -64,7 +64,7 @@ export default function Login() {
             autoComplete="current-password"
           />
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-[12px] text-red-300">{error}</p>}
 
           <Button
             variant="primary"
@@ -72,12 +72,15 @@ export default function Login() {
             type="submit"
             disabled={loading || !username.trim() || !password}
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Signing in…" : "Sign In"}
           </Button>
 
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-[12px] text-[var(--parchment-dim)]">
             No account?{" "}
-            <Link to="/register" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+            <Link
+              to="/register"
+              className="text-[#e8cd7a] underline-offset-2 transition-colors hover:text-[#f5e2a6] hover:underline"
+            >
               Create one
             </Link>
           </p>

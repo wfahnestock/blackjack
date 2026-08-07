@@ -60,3 +60,13 @@ export function tableBgClass(key: string | null | undefined): string {
   if (!key || key === "default") return "felt-bg";
   return `tb-${key}`;
 }
+
+/**
+ * Variant class for the shell pages (home, settings, lobby), so the surrounding
+ * UI wears the same felt the player equipped for the table. "default" needs no
+ * modifier — the base `.casino-felt` is already green.
+ */
+export function casinoFeltClass(key: string | null | undefined): string {
+  if (!key || key === "default") return "";
+  return `casino-felt-${key}`;
+}

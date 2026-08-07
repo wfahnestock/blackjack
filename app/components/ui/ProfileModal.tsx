@@ -129,68 +129,67 @@ export function ProfileModal({ playerId, onClose, selfPlayerId }: ProfileModalPr
     <Modal isOpen={!!playerId} onClose={onClose}>
       {loading && (
         <div className="flex justify-center py-8">
-          <p className="text-gray-500 text-sm">Loading profile...</p>
+          <p className="text-[12px] text-[var(--parchment-dim)]">Loading profile…</p>
         </div>
       )}
 
       {error && (
-        <p className="text-red-400 text-sm text-center py-4">{error}</p>
+        <p className="text-red-300 text-[12px] text-center py-4">{error}</p>
       )}
 
       {profile && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           {/* Avatar + identity */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3.5">
             <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-white font-bold text-xl shrink-0"
-              style={{ backgroundColor: profile.avatarColor }}
+              className="shrink-0 rounded-full flex items-center justify-center text-white font-bold text-xl border-2 border-[var(--brass)]/45"
+              style={{ backgroundColor: profile.avatarColor, width: 52, height: 52 }}
             >
               {profile.displayName.charAt(0).toUpperCase()}
             </div>
-            <div>
+            <div className="min-w-0">
               <DisplayName
                 displayName={profile.displayName}
                 nameEffect={profile.nameEffect}
                 roles={profile.roles}
-                className="font-bold text-lg leading-tight"
+                className="font-display text-lg text-[var(--parchment)] leading-tight"
               />
-              <p className="text-sm text-gray-500">@{profile.username}</p>
+              <p className="text-[11.5px] text-[#7d6f4d]">@{profile.username}</p>
               {profile.roles.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
+                <div className="flex flex-wrap gap-1 mt-1.5">
                   {profile.roles.map((role) => (
                     <RoleBadge key={role.id} role={role} />
                   ))}
                 </div>
               )}
-              <p className="text-sm text-yellow-500 font-medium mt-0.5">
-                {formatChips(profile.chips)} chips
+              <p className="mt-1 text-[12.5px] font-semibold tabular-nums text-[#e8cd7a]">
+                {formatChips(profile.chips)}
+                <span className="ml-1.5 text-[10px] font-normal uppercase tracking-[0.14em] text-[var(--parchment-dim)]">
+                  chips
+                </span>
               </p>
             </div>
           </div>
 
+          <hr className="brass-rule" />
+
           {/* Tab switcher */}
-          <div className="flex gap-1 bg-gray-800/60 rounded-lg p-1">
+          <div className="flex gap-1">
             <button
               onClick={() => setTab("stats")}
-              className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                tab === "stats"
-                  ? "bg-gray-700 text-white"
-                  : "text-gray-400 hover:text-gray-200"
-              }`}
+              data-active={tab === "stats"}
+              className="casino-seg flex-1 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.09em]"
             >
               Stats
             </button>
             <button
               onClick={() => setTab("achievements")}
-              className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                tab === "achievements"
-                  ? "bg-gray-700 text-white"
-                  : "text-gray-400 hover:text-gray-200"
-              }`}
+              data-active={tab === "achievements"}
+              className="casino-seg flex-1 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.09em]"
             >
-              Achievements
+              Awards
               {achievements && achievements.filter((a) => a.unlockedAt !== null).length > 0 && (
-                <span className="ml-1.5 text-xs bg-indigo-500/80 text-white px-1.5 py-0.5 rounded-full">
+                <span className="ml-1.5 rounded bg-[var(--brass)]/20 px-1.5 py-px text-[10px] tabular-nums text-[#e8cd7a]">
                   {achievements.filter((a) => a.unlockedAt !== null).length}
                 </span>
               )}
@@ -198,13 +197,11 @@ export function ProfileModal({ playerId, onClose, selfPlayerId }: ProfileModalPr
             {showAdminTab && (
               <button
                 onClick={() => setTab("admin")}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  tab === "admin"
-                    ? "bg-gray-700 text-amber-300"
-                    : "text-amber-400/70 hover:text-amber-300"
-                }`}
+                data-active={tab === "admin"}
+                className="casino-seg flex-1 py-1.5 text-[11.5px] font-semibold uppercase tracking-[0.09em]"
               >
-                🛡️ Admin
+                <i className="fa-solid fa-shield-halved mr-1.5 text-[10px]" />
+                Admin
               </button>
             )}
           </div>
@@ -223,11 +220,11 @@ export function ProfileModal({ playerId, onClose, selfPlayerId }: ProfileModalPr
           {/* Stats tab */}
           {tab === "stats" && (
             profile.stats.handsPlayed === 0 ? (
-              <p className="text-center text-gray-600 text-sm py-4">
+              <p className="text-center text-[12px] text-[#7d6f4d] py-4">
                 No hands played yet.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-1.5">
                 <StatCard
                   label="Hands Played"
                   value={profile.stats.handsPlayed.toLocaleString()}
@@ -332,15 +329,15 @@ function StatCard({
   negative?: boolean;
 }) {
   return (
-    <div className="bg-gray-800/60 border border-gray-700/50 rounded-xl p-3 flex flex-col gap-0.5">
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
+    <div className="casino-panel px-3 py-2 flex flex-col gap-0.5">
+      <p className="casino-eyebrow">{label}</p>
       <p
-        className={`font-bold text-base ${
+        className={`font-semibold text-[15px] tabular-nums ${
           negative
-            ? "text-red-400"
+            ? "text-red-300"
             : positive
-            ? "text-emerald-400"
-            : "text-gray-200"
+            ? "text-emerald-300"
+            : "text-[#f0e4c6]"
         }`}
       >
         {value}
@@ -366,7 +363,7 @@ const CATEGORY_META: Record<AchievementCategory, { label: string; icon: string }
 function AchievementsPanel({ achievements }: { achievements: AchievementInfo[] }) {
   if (achievements.length === 0) {
     return (
-      <p className="text-center text-gray-600 text-sm py-4">Loading achievements...</p>
+      <p className="text-center text-[12px] text-[#7d6f4d] py-4">Loading achievements…</p>
     );
   }
 
@@ -381,9 +378,21 @@ function AchievementsPanel({ achievements }: { achievements: AchievementInfo[] }
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-xs text-gray-500 text-center">
-        {totalUnlocked} / {achievements.length} unlocked
-      </p>
+      {/* Overall progress reads better as a bar than as a bare fraction. */}
+      <div>
+        <div className="flex items-baseline justify-between">
+          <span className="casino-eyebrow">Unlocked</span>
+          <span className="text-[11px] tabular-nums text-[var(--parchment-dim)]">
+            {totalUnlocked} / {achievements.length}
+          </span>
+        </div>
+        <div className="mt-1.5 h-[3px] w-full overflow-hidden rounded-full bg-black/50">
+          <div
+            className="h-full rounded-full bg-[var(--brass)]/75"
+            style={{ width: `${(totalUnlocked / achievements.length) * 100}%` }}
+          />
+        </div>
+      </div>
 
       {CATEGORY_ORDER.map((cat) => {
         const group = byCategory.get(cat);
@@ -394,11 +403,9 @@ function AchievementsPanel({ achievements }: { achievements: AchievementInfo[] }
         return (
           <div key={cat} className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
-              <i className={`fa-solid ${meta.icon} text-xs text-gray-500`} />
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-semibold">
-                {meta.label}
-              </p>
-              <span className="text-xs text-gray-600 ml-auto">
+              <i className={`fa-solid ${meta.icon} text-[10px] text-[var(--parchment-dim)]`} />
+              <p className="casino-eyebrow">{meta.label}</p>
+              <span className="ml-auto text-[10.5px] tabular-nums text-[#7d6f4d]">
                 {unlockedInGroup}/{group.length}
               </span>
             </div>
@@ -423,42 +430,42 @@ function AchievementCard({ achievement }: { achievement: AchievementInfo }) {
   const unlocked = achievement.unlockedAt !== null;
   return (
     <div
-      className={`flex items-center gap-3 rounded-xl p-3 border transition-colors ${
+      className={`flex items-center gap-3 rounded-md border px-3 py-2 transition-colors ${
         unlocked
-          ? "bg-indigo-500/10 border-indigo-500/30"
-          : "bg-gray-800/40 border-gray-700/30 opacity-40"
+          ? "border-[var(--brass)]/30 bg-[var(--brass)]/[0.07]"
+          : "border-white/[0.06] bg-black/20 opacity-45"
       }`}
     >
       <div
-        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-          unlocked ? "bg-indigo-500/20" : "bg-gray-700/50"
+        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md ${
+          unlocked ? "bg-[var(--brass)]/18" : "bg-white/[0.04]"
         }`}
       >
         <i
-          className={`fa-solid ${achievement.icon} text-sm ${
-            unlocked ? "text-indigo-400" : "text-gray-600"
+          className={`fa-solid ${achievement.icon} text-[13px] ${
+            unlocked ? "text-[#e8cd7a]" : "text-[#5d5540]"
           }`}
         />
       </div>
-      <div className="flex flex-col min-w-0">
+      <div className="flex min-w-0 flex-col">
         <p
-          className={`font-semibold text-sm leading-tight ${
-            unlocked ? "text-white" : "text-gray-500"
+          className={`text-[13px] font-semibold leading-tight ${
+            unlocked ? "text-[#f0e4c6]" : "text-[#8a7f5f]"
           }`}
         >
           {achievement.name}
         </p>
-        <p className="text-xs text-gray-500 leading-snug mt-0.5">
+        <p className="mt-0.5 text-[11px] leading-snug text-[#7d6f4d]">
           {achievement.description}
         </p>
         {unlocked && achievement.unlockedAt && (
-          <p className="text-xs text-indigo-400/70 mt-0.5">
+          <p className="mt-0.5 text-[10.5px] text-[var(--parchment-dim)]">
             {new Date(achievement.unlockedAt).toLocaleDateString()}
           </p>
         )}
       </div>
       {unlocked && (
-        <i className="fa-solid fa-check text-emerald-400 text-xs ml-auto shrink-0" />
+        <i className="fa-solid fa-check ml-auto shrink-0 text-[11px] text-[var(--brass)]" />
       )}
     </div>
   );
@@ -467,7 +474,9 @@ function AchievementCard({ achievement }: { achievement: AchievementInfo }) {
 // ─── In-game admin quick actions ─────────────────────────────────────────────
 
 const ADMIN_BTN =
-  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+  "rounded-md px-3 py-1.5 text-[12px] font-semibold transition-all disabled:cursor-not-allowed";
+const ADMIN_BTN_NEUTRAL = `${ADMIN_BTN} btn-brass-ghost`;
+const ADMIN_INPUT = "casino-input px-3 py-1.5 text-[12.5px]";
 
 /**
  * Moderation actions against the player whose profile is open, shown at the
@@ -528,24 +537,28 @@ function AdminActions({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-gray-500">Acting on</span>
-        <span className="font-semibold text-gray-200">{targetName}</span>
+      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+        <span className="casino-eyebrow">Acting on</span>
+        <span className="font-semibold text-[#e6d9b6]">{targetName}</span>
         {banned && (
-          <span className="rounded bg-red-900/70 px-1.5 py-0.5 text-red-200">banned</span>
+          <span className="rounded border border-red-400/30 bg-red-500/15 px-1.5 py-0.5 text-red-200">
+            banned
+          </span>
         )}
         {muted && (
-          <span className="rounded bg-amber-900/70 px-1.5 py-0.5 text-amber-200">muted</span>
+          <span className="rounded border border-amber-400/30 bg-amber-500/15 px-1.5 py-0.5 text-amber-200">
+            muted
+          </span>
         )}
       </div>
 
       {err && (
-        <p className="rounded-lg border border-red-900/60 bg-red-950/40 px-3 py-1.5 text-xs text-red-300">
+        <p className="rounded-md border border-red-400/25 bg-red-500/10 px-3 py-1.5 text-[11.5px] text-red-200">
           {err}
         </p>
       )}
       {msg && (
-        <p className="rounded-lg border border-emerald-900/60 bg-emerald-950/40 px-3 py-1.5 text-xs text-emerald-300">
+        <p className="rounded-md border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[11.5px] text-emerald-200">
           {msg}
         </p>
       )}
@@ -554,7 +567,7 @@ function AdminActions({
         {can("player.kick") && (
           <button
             disabled={busy}
-            className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+            className={ADMIN_BTN_NEUTRAL}
             onClick={() =>
               run(
                 `/api/admin/players/${targetId}/kick`,
@@ -571,7 +584,7 @@ function AdminActions({
           (muted ? (
             <button
               disabled={busy}
-              className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+              className={ADMIN_BTN_NEUTRAL}
               onClick={() =>
                 run(
                   `/api/admin/players/${targetId}/mute`,
@@ -588,7 +601,7 @@ function AdminActions({
                 <button
                   key={m}
                   disabled={busy}
-                  className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+                  className={ADMIN_BTN_NEUTRAL}
                   onClick={() =>
                     run(
                       `/api/admin/players/${targetId}/mute`,
@@ -607,7 +620,7 @@ function AdminActions({
           ? can("player.unban") && (
               <button
                 disabled={busy}
-                className={`${ADMIN_BTN} bg-emerald-700 text-white hover:bg-emerald-600`}
+                className={`${ADMIN_BTN} btn-go`}
                 onClick={() =>
                   run(`/api/admin/players/${targetId}/unban`, { method: "POST" }, "Unbanned")
                 }
@@ -618,7 +631,7 @@ function AdminActions({
           : can("player.ban") && (
               <button
                 disabled={busy}
-                className={`${ADMIN_BTN} bg-red-700 text-white hover:bg-red-600`}
+                className={`${ADMIN_BTN} btn-danger`}
                 onClick={() =>
                   run(
                     `/api/admin/players/${targetId}/ban`,
@@ -638,7 +651,7 @@ function AdminActions({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (optional, shown to the player)"
-          className="rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-100 focus:border-gray-500 focus:outline-none"
+          className={ADMIN_INPUT}
         />
       )}
 
@@ -649,11 +662,11 @@ function AdminActions({
             onChange={(e) => setChips(e.target.value)}
             placeholder="Chips ±"
             inputMode="numeric"
-            className="w-28 rounded-lg border border-gray-700 bg-gray-900 px-3 py-1.5 text-sm text-gray-100 focus:border-gray-500 focus:outline-none"
+            className={`${ADMIN_INPUT} w-28`}
           />
           <button
             disabled={busy || !chips || Number.isNaN(Number(chips))}
-            className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+            className={ADMIN_BTN_NEUTRAL}
             onClick={() =>
               run(
                 `/api/admin/players/${targetId}/chips`,
@@ -666,7 +679,7 @@ function AdminActions({
           </button>
           <button
             disabled={busy || !chips || Number.isNaN(Number(chips))}
-            className={`${ADMIN_BTN} bg-gray-800 text-gray-200 hover:bg-gray-700`}
+            className={ADMIN_BTN_NEUTRAL}
             onClick={() =>
               run(
                 `/api/admin/players/${targetId}/chips`,
@@ -677,7 +690,7 @@ function AdminActions({
           >
             Set
           </button>
-          <span className="text-[11px] text-gray-500">
+          <span className="text-[11px] text-[#7d6f4d]">
             Applies immediately, at the table too if they're seated.
           </span>
         </div>
@@ -685,7 +698,7 @@ function AdminActions({
 
       <a
         href="/admin"
-        className="text-xs text-gray-500 underline-offset-2 hover:text-gray-300 hover:underline"
+        className="text-[11px] text-[var(--parchment-dim)] underline-offset-2 transition-colors hover:text-[#e8cd7a] hover:underline"
       >
         Open full admin console →
       </a>

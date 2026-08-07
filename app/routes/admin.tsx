@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router";
 import { useAuth } from "~/lib/AuthContext";
+import { ShellLayout } from "~/components/shell/ShellLayout";
 import type { RoleInfo } from "~/lib/types";
 import {
   PERMISSIONS,
@@ -64,15 +64,20 @@ function useApi() {
 const isMuted = (p: { mutedUntil: string | null }) =>
   Boolean(p.mutedUntil && new Date(p.mutedUntil).getTime() > Date.now());
 
+/* This is a staff tool, so it stays dense and utilitarian — it just wears the
+   same palette as the rest of the site instead of its own grey theme. */
 const BTN =
-  "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed";
-const BTN_NEUTRAL = `${BTN} bg-gray-800 hover:bg-gray-700 text-gray-200`;
-const BTN_DANGER = `${BTN} bg-red-700 hover:bg-red-600 text-white`;
-const BTN_GO = `${BTN} bg-emerald-600 hover:bg-emerald-500 text-white`;
-const INPUT =
-  "px-3 py-1.5 rounded-lg bg-gray-900 border border-gray-700 text-sm text-gray-100 focus:outline-none focus:border-gray-500";
+  "px-3 py-1.5 rounded-md text-[12px] font-semibold transition-all disabled:cursor-not-allowed";
+const BTN_NEUTRAL = `${BTN} btn-brass-ghost`;
+const BTN_DANGER = `${BTN} btn-danger`;
+const BTN_GO = `${BTN} btn-go`;
+const INPUT = "casino-input px-3 py-1.5 text-[12.5px]";
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
+
+export function meta() {
+  return [{ title: "Admin Console — Blackjack" }];
+}
 
 export default function Admin() {
   const { user } = useAuth();
@@ -93,15 +98,20 @@ export default function Admin() {
   const fail = (e: unknown) => setError(e instanceof Error ? e.message : String(e));
 
   if (!user) {
-    return <Shell><p className="text-gray-400">You must be signed in.</p></Shell>;
+    return (
+      <Shell>
+        <p className="text-[13px] text-[var(--parchment-dim)]">You must be signed in.</p>
+      </Shell>
+    );
   }
   if (!hasPermission(user.roles, "admin.access")) {
     return (
       <Shell>
-        <div className="rounded-xl border border-red-900/60 bg-red-950/30 p-6">
-          <h2 className="text-lg font-semibold text-red-300">Access denied</h2>
-          <p className="mt-1 text-sm text-gray-400">
-            Your roles don't grant the <code className="text-gray-300">admin.access</code>{" "}
+        <div className="rounded-md border border-red-400/25 bg-red-500/10 p-5">
+          <h2 className="font-display text-lg text-red-200">Access denied</h2>
+          <p className="mt-1 text-[12.5px] text-[#c7b78c]">
+            Your roles don't grant the{" "}
+            <code className="rounded bg-black/40 px-1 text-[#e6d9b6]">admin.access</code>{" "}
             permission. If you were recently granted a staff role, sign out and back in.
           </p>
         </div>
@@ -111,14 +121,13 @@ export default function Admin() {
 
   return (
     <Shell>
-      <div className="mb-6 flex items-center gap-2">
+      <div className="mb-5 flex items-center gap-1">
         {(["players", "roles"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold capitalize transition-colors ${
-              tab === t ? "bg-gray-800 text-white" : "text-gray-400 hover:text-gray-200"
-            }`}
+            data-active={tab === t}
+            className="casino-seg px-4 py-2 text-[12px] font-semibold uppercase tracking-[0.09em]"
           >
             {t}
           </button>
@@ -126,12 +135,12 @@ export default function Admin() {
       </div>
 
       {error && (
-        <div className="mb-4 rounded-lg border border-red-900/60 bg-red-950/40 px-4 py-2 text-sm text-red-300">
+        <div className="mb-4 rounded-md border border-red-400/25 bg-red-500/10 px-4 py-2 text-[12.5px] text-red-200">
           {error}
         </div>
       )}
       {notice && (
-        <div className="mb-4 rounded-lg border border-emerald-900/60 bg-emerald-950/40 px-4 py-2 text-sm text-emerald-300">
+        <div className="mb-4 rounded-md border border-emerald-400/25 bg-emerald-500/10 px-4 py-2 text-[12.5px] text-emerald-200">
           {notice}
         </div>
       )}
@@ -147,17 +156,16 @@ export default function Admin() {
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
-      <div className="mx-auto max-w-6xl px-6 py-8">
-        <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Admin Console</h1>
-          <Link to="/" className="text-sm text-gray-400 hover:text-gray-200">
-            ← Back to game
-          </Link>
+    <ShellLayout contentClassName="px-4 py-8">
+      {/* Wider than the other pages: the permission matrix needs the room. */}
+      <div className="mx-auto w-full max-w-6xl">
+        <div className="mb-5 flex items-baseline gap-3">
+          <h1 className="font-display text-2xl text-[var(--parchment)]">Admin Console</h1>
+          <span className="casino-eyebrow">Staff</span>
         </div>
         {children}
       </div>
-    </div>
+    </ShellLayout>
   );
 }
 
@@ -252,42 +260,44 @@ function PlayersTab({
           </button>
         </form>
 
-        <div className="max-h-[70vh] overflow-y-auto rounded-xl border border-gray-800">
+        <div className="casino-panel no-scrollbar max-h-[70vh] overflow-y-auto">
           {players.length === 0 && (
-            <p className="p-4 text-sm text-gray-500">No players found.</p>
+            <p className="p-4 text-[12px] text-[var(--parchment-dim)]">No players found.</p>
           )}
           {players.map((p) => (
             <button
               key={p.id}
               onClick={() => setSelectedId(p.id)}
-              className={`flex w-full items-center gap-3 border-b border-gray-800/70 px-3 py-2.5 text-left transition-colors last:border-0 ${
-                selectedId === p.id ? "bg-gray-800" : "hover:bg-gray-900"
+              className={`flex w-full items-center gap-3 border-b border-[var(--brass)]/10 px-3 py-2.5 text-left transition-colors last:border-0 ${
+                selectedId === p.id
+                  ? "bg-[var(--brass)]/[0.12]"
+                  : "hover:bg-white/[0.035]"
               }`}
             >
               <span
-                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-bold text-white"
                 style={{ background: p.avatarColor }}
               >
                 {p.displayName.charAt(0).toUpperCase()}
               </span>
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-medium text-gray-100">
+                <span className="block truncate text-[13px] font-medium text-[#e6d9b6]">
                   {p.displayName}
                 </span>
-                <span className="block truncate text-xs text-gray-500">@{p.username}</span>
+                <span className="block truncate text-[11px] text-[#7d6f4d]">@{p.username}</span>
               </span>
               <span className="flex flex-col items-end gap-1">
-                <span className="text-xs tabular-nums text-yellow-400">
+                <span className="text-[11.5px] tabular-nums text-[#e8cd7a]">
                   {p.chips.toLocaleString()}
                 </span>
                 <span className="flex gap-1">
                   {p.bannedAt && (
-                    <span className="rounded bg-red-900/70 px-1 text-[10px] text-red-200">
+                    <span className="rounded border border-red-400/25 bg-red-500/15 px-1 text-[9.5px] text-red-200">
                       banned
                     </span>
                   )}
                   {isMuted(p) && (
-                    <span className="rounded bg-amber-900/70 px-1 text-[10px] text-amber-200">
+                    <span className="rounded border border-amber-400/25 bg-amber-500/15 px-1 text-[9.5px] text-amber-200">
                       muted
                     </span>
                   )}
@@ -301,7 +311,9 @@ function PlayersTab({
       {/* Detail */}
       <div>
         {!detail ? (
-          <p className="text-sm text-gray-500">Select a player to manage them.</p>
+          <p className="text-[12.5px] text-[var(--parchment-dim)]">
+            Select a player to manage them.
+          </p>
         ) : (
           <PlayerDetail
             detail={detail}
@@ -344,34 +356,36 @@ function PlayerDetail({
   return (
     <div className="space-y-5">
       {/* Header */}
-      <div className="rounded-xl border border-gray-800 p-4">
+      <div className="casino-panel p-4">
         <div className="flex items-center gap-3">
           <span
-            className="flex h-11 w-11 items-center justify-center rounded-full text-base font-bold text-white"
+            className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-[var(--brass)]/45 text-base font-bold text-white"
             style={{ background: p.avatarColor }}
           >
             {p.displayName.charAt(0).toUpperCase()}
           </span>
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold">{p.displayName}</h2>
-            <p className="text-xs text-gray-500">@{p.username}</p>
+            <h2 className="truncate font-display text-lg text-[var(--parchment)]">
+              {p.displayName}
+            </h2>
+            <p className="text-[11px] text-[#7d6f4d]">@{p.username}</p>
           </div>
           <div className="ml-auto text-right">
-            <p className="text-xl font-bold tabular-nums text-yellow-400">
+            <p className="text-xl font-bold tabular-nums text-[#f0dca4]">
               {p.chips.toLocaleString()}
             </p>
-            <p className="text-[11px] uppercase tracking-widest text-gray-500">chips</p>
+            <p className="casino-eyebrow">chips</p>
           </div>
         </div>
         {(banned || muted) && (
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          <div className="mt-3 flex flex-wrap gap-2 text-[11.5px]">
             {banned && (
-              <span className="rounded bg-red-900/60 px-2 py-1 text-red-200">
+              <span className="rounded border border-red-400/25 bg-red-500/12 px-2 py-1 text-red-200">
                 Banned{p.banReason ? `: ${p.banReason}` : ""}
               </span>
             )}
             {muted && (
-              <span className="rounded bg-amber-900/60 px-2 py-1 text-amber-200">
+              <span className="rounded border border-amber-400/25 bg-amber-500/12 px-2 py-1 text-amber-200">
                 Muted until {new Date(p.mutedUntil!).toLocaleString()}
               </span>
             )}
@@ -496,7 +510,7 @@ function PlayerDetail({
                 inputMode="numeric"
                 className={`${INPUT} w-20`}
               />
-              <span className="text-xs text-gray-500">min</span>
+              <span className="text-[11px] text-[var(--parchment-dim)]">min</span>
               <button
                 className={BTN_NEUTRAL}
                 onClick={() =>
@@ -575,8 +589,8 @@ function PlayerDetail({
                 }
                 className={`${BTN} ${
                   on
-                    ? "bg-emerald-700 text-white hover:bg-emerald-600"
-                    : "bg-gray-800 text-gray-300 hover:bg-gray-700"
+                    ? "btn-go"
+                    : "btn-brass-ghost"
                 }`}
                 title={`${r.permissions?.length ?? 0} permissions`}
               >
@@ -586,7 +600,7 @@ function PlayerDetail({
             );
           })}
         </div>
-        <p className="text-xs text-gray-500">
+        <p className="text-[11px] text-[#7d6f4d]">
           You can only assign roles whose permissions you already hold.
         </p>
       </Section>
@@ -596,7 +610,7 @@ function PlayerDetail({
         title="Achievements"
         show={can("player.grant_achievement") || can("player.revoke_achievement")}
       >
-        <div className="max-h-56 space-y-1 overflow-y-auto pr-1">
+        <div className="no-scrollbar max-h-56 w-full space-y-1 overflow-y-auto pr-1">
           {achievements.map((a) => {
             const unlocked = detail.achievements.includes(a.id);
             const allowed = unlocked
@@ -605,11 +619,13 @@ function PlayerDetail({
             return (
               <div
                 key={a.id}
-                className="flex items-center gap-3 rounded-lg border border-gray-800 px-3 py-1.5"
+                className="flex items-center gap-3 rounded-md border border-[var(--brass)]/12 px-3 py-1.5"
               >
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm text-gray-200">{a.name}</span>
-                  <span className="block truncate text-xs text-gray-500">{a.description}</span>
+                  <span className="block truncate text-[12.5px] text-[#e6d9b6]">{a.name}</span>
+                  <span className="block truncate text-[11px] text-[#7d6f4d]">
+                    {a.description}
+                  </span>
                 </span>
                 <button
                   disabled={!allowed}
@@ -646,10 +662,8 @@ function Section({
 }) {
   if (!show) return null;
   return (
-    <div className="rounded-xl border border-gray-800 p-4">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-gray-500">
-        {title}
-      </h3>
+    <div className="casino-panel p-4">
+      <h3 className="casino-eyebrow mb-3">{title}</h3>
       <div className="flex flex-wrap items-center gap-3">{children}</div>
     </div>
   );
@@ -714,7 +728,7 @@ function RolesTab({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-gray-400">
+      <p className="max-w-3xl text-[12.5px] leading-relaxed text-[#c7b78c]">
         Grant each role exactly the tools it should have. You can only toggle permissions you
         hold yourself, and you can't edit a role that already holds a permission you lack. The
         server enforces both.
@@ -727,13 +741,13 @@ function RolesTab({
           [...(role.permissions ?? [])].sort().join(",");
 
         return (
-          <div key={role.id} className="rounded-xl border border-gray-800 p-4">
+          <div key={role.id} className="casino-panel p-4">
             <div className="mb-3 flex items-center gap-3">
-              <h3 className="text-base font-semibold">{role.label}</h3>
-              <code className="rounded bg-gray-900 px-1.5 py-0.5 text-xs text-gray-500">
+              <h3 className="font-display text-base text-[var(--parchment)]">{role.label}</h3>
+              <code className="rounded bg-black/40 px-1.5 py-0.5 text-[11px] text-[#8a7f5f]">
                 {role.name}
               </code>
-              <span className="text-xs text-gray-500">
+              <span className="text-[11px] tabular-nums text-[var(--parchment-dim)]">
                 {(draft[role.id] ?? new Set()).size} / {Object.keys(PERMISSIONS).length}
               </span>
               {editable && !outranksMe && (
@@ -746,7 +760,7 @@ function RolesTab({
                 </button>
               )}
               {outranksMe && (
-                <span className="ml-auto text-xs text-amber-400">
+                <span className="ml-auto text-[11px] text-amber-300/80">
                   This role outranks you; read-only.
                 </span>
               )}
@@ -755,9 +769,7 @@ function RolesTab({
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               {PERMISSION_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-widest text-gray-600">
-                    {group.label}
-                  </p>
+                  <p className="casino-eyebrow mb-1.5">{group.label}</p>
                   <div className="space-y-1">
                     {group.permissions.map((perm) => {
                       const checked = (draft[role.id] ?? new Set()).has(perm);
@@ -765,7 +777,7 @@ function RolesTab({
                       return (
                         <label
                           key={perm}
-                          className={`flex items-start gap-2 text-sm ${
+                          className={`flex items-start gap-2 text-[12.5px] ${
                             locked ? "opacity-40" : "cursor-pointer"
                           }`}
                           title={locked && !myPerms.has(perm) ? "You don't hold this permission" : ""}
@@ -775,11 +787,11 @@ function RolesTab({
                             checked={checked}
                             disabled={locked}
                             onChange={() => toggle(role.id, perm)}
-                            className="mt-0.5 accent-emerald-500"
+                            className="mt-[3px] h-3.5 w-3.5 shrink-0 accent-[var(--brass)]"
                           />
                           <span>
-                            <span className="text-gray-300">{PERMISSIONS[perm]}</span>
-                            <code className="ml-1 text-[11px] text-gray-600">{perm}</code>
+                            <span className="text-[#d5c398]">{PERMISSIONS[perm]}</span>
+                            <code className="ml-1 text-[10.5px] text-[#6b6144]">{perm}</code>
                           </span>
                         </label>
                       );

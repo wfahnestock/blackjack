@@ -9,23 +9,18 @@ export function Input({ label, error, className = "", id, ...props }: InputProps
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
-        <label htmlFor={id} className="text-sm font-medium text-gray-300">
+        <label htmlFor={id} className="casino-eyebrow">
           {label}
         </label>
       )}
       <input
         id={id}
-        className={`
-          w-full rounded-lg bg-gray-800 border px-3 py-2.5 text-sm text-gray-100
-          placeholder:text-gray-500
-          focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-          transition-colors
-          ${error ? "border-red-500" : "border-gray-700"}
-          ${className}
-        `}
+        className={`casino-input w-full px-3 py-2.5 text-[13px] ${
+          error ? "!border-red-400/60" : ""
+        } ${className}`}
         {...props}
       />
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && <p className="text-[11px] text-red-300">{error}</p>}
     </div>
   );
 }

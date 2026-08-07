@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
 import { useSocket } from "~/lib/useSocket";
 import type { RoomListing } from "~/lib/types";
-import { RoomCard } from "./RoomCard";
+import { MAX_PLAYERS } from "~/lib/constants";
+import { formatChips } from "~/lib/handUtils";
 
 interface RoomBrowserProps {
-  /** Called when the player clicks "Join Table" on a card. */
+  /** Called when the player clicks a room row. */
   onJoin: (code: string) => void;
-  /** The code currently being joined (to show loading state on the right card). */
+  /** The code currently being joined (to show loading state on the right row). */
   joiningCode: string | null;
+}
+
+/** Human label for the phase shown on a room row. */
+function phaseLabel(phase: RoomListing["phase"]): string {
+  return phase === "lobby" ? "In lobby" : "In play";
 }
 
 export function RoomBrowser({ onJoin, joiningCode }: RoomBrowserProps) {
@@ -16,13 +22,11 @@ export function RoomBrowser({ onJoin, joiningCode }: RoomBrowserProps) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    // Initial fetch
     socket.emit("rooms:subscribe", (initial: RoomListing[]) => {
       setRooms(initial);
       setLoaded(true);
     });
 
-    // Real-time updates
     const onUpdated = (updated: RoomListing[]) => setRooms(updated);
     socket.on("rooms:updated", onUpdated);
 
@@ -32,36 +36,70 @@ export function RoomBrowser({ onJoin, joiningCode }: RoomBrowserProps) {
   }, [socket]);
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-widest">
-          Public Rooms
-        </h2>
-        {loaded && (
-          <span className="text-xs text-gray-600">
-            {rooms.length === 0 ? "No rooms open" : `${rooms.length} room${rooms.length !== 1 ? "s" : ""} open`}
-          </span>
-        )}
-      </div>
+    <div>
+      <p className="casino-eyebrow mb-2.5">
+        Open Tables{loaded && rooms.length > 0 ? ` · ${rooms.length}` : ""}
+      </p>
 
       {!loaded ? (
-        <div className="text-center py-8 text-gray-600 text-sm">Loading rooms…</div>
+        <p className="py-5 text-[11px] text-[#6b6144]">Looking for tables…</p>
       ) : rooms.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 border-dashed rounded-2xl py-10 text-center">
-          <div className="text-3xl mb-3 select-none opacity-40">♠</div>
-          <p className="text-gray-500 text-sm">No public rooms right now.</p>
-          <p className="text-gray-600 text-xs mt-1">Create one to get started!</p>
+        <div className="py-8 text-center">
+          <div className="text-2xl mb-2 select-none text-[var(--brass)]/25">♠</div>
+          <p className="text-[12px] text-[#8d7c58]">No tables open right now.</p>
+          <p className="text-[11px] text-[#6b6144] mt-1">Create one to get things started.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
-          {rooms.map((room) => (
-            <RoomCard
-              key={room.code}
-              room={room}
-              onJoin={onJoin}
-              joining={joiningCode === room.code}
-            />
-          ))}
+        <div>
+          {rooms.map((room, i) => {
+            const joining = joiningCode === room.code;
+            const full = room.playerCount >= room.maxPlayers;
+            return (
+              <button
+                key={room.code}
+                onClick={() => !full && onJoin(room.code)}
+                disabled={full || !!joiningCode}
+                className={`w-full flex items-center gap-3 py-2.5 text-left transition-colors group ${
+                  i === rooms.length - 1 ? "" : "border-b border-white/[0.06]"
+                } ${full ? "opacity-40 cursor-not-allowed" : "hover:bg-white/[0.03]"}`}
+              >
+                {/* Felt swatch — a miniature of the table you'd be sitting at. */}
+                <span
+                  className="w-[34px] h-[24px] rounded-[3px] flex-none border border-black/45"
+                  style={{
+                    background: "radial-gradient(ellipse at 50% 32%, #2f9160, #0f3a24)",
+                    boxShadow: "inset 0 0 5px rgba(0,0,0,0.4)",
+                  }}
+                />
+
+                <span className="min-w-0">
+                  <span className="block font-mono text-[13px] tracking-[0.05em] text-[#f0e4c6]">
+                    {room.code}
+                  </span>
+                  <span className="block text-[10px] text-[#7d6f4d]">
+                    {formatChips(room.settings.minBet)} – {formatChips(room.settings.maxBet)}
+                  </span>
+                </span>
+
+                <span className="ml-auto text-right">
+                  {/* One dot per seat, filled for occupied. */}
+                  <span className="flex gap-[3px] justify-end">
+                    {Array.from({ length: room.maxPlayers || MAX_PLAYERS }).map((_, s) => (
+                      <span
+                        key={s}
+                        className={`w-[7px] h-[7px] rounded-full ${
+                          s < room.playerCount ? "bg-[var(--brass)]" : "bg-white/10"
+                        }`}
+                      />
+                    ))}
+                  </span>
+                  <span className="block text-[9px] uppercase tracking-[0.1em] text-[#7d6f4d] mt-1">
+                    {joining ? "Joining…" : full ? "Full" : phaseLabel(room.phase)}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>

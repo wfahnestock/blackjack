@@ -80,6 +80,33 @@ function recordAction(
   });
 }
 
+/**
+ * Placeholder identity for a face-down card.
+ *
+ * `faceDown` is only a rendering hint — the client draws a card back and its
+ * hand-value helpers skip face-down cards entirely. Sending the real rank and
+ * suit therefore adds nothing visually while letting anyone with devtools open
+ * read the dealer's hole card before they act, which makes insurance a free
+ * decision and basic strategy meaningless. The server keeps the real card in
+ * its own state; only the outbound copy is stripped.
+ */
+const HIDDEN_CARD: Card = { rank: "2", suit: "spades", faceDown: true };
+
+/**
+ * Returns a copy of the hand safe to send to clients.
+ *
+ * Always copies, even when nothing is face-down. Returning the live array when
+ * there was nothing to hide meant the emitted object aliased `this.state`, so a
+ * card pushed a moment later showed up inside an already-"sent" payload. The
+ * transport happens to serialize immediately, but nothing should depend on that.
+ */
+export function redactHand(hand: Hand): Hand {
+  return {
+    ...hand,
+    cards: hand.cards.map((c) => (c.faceDown ? { ...HIDDEN_CARD } : { ...c })),
+  };
+}
+
 type HandResolution = { result: HandResult; payoutMultiplier: number };
 
 /**
@@ -118,7 +145,18 @@ export type EmitToFn = (socketId: string, event: string, data: unknown) => void;
 
 export class GameStateMachine {
   private deck = new Deck();
-  private timer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * Every pending timeout, not just the current phase timer.
+   *
+   * A single handle used to be tracked, which meant the deal-completion
+   * callback, the dealer-draw recursion and the payout delays were all
+   * invisible to clearTimers()/destroy(). Destroying a room mid-deal left those
+   * firing against a dead machine, mutating state and broadcasting into a
+   * closed room — and every `clearTimer()` call site read as "all pending work
+   * cancelled" when it wasn't.
+   */
+  private timers = new Set<ReturnType<typeof setTimeout>>();
+  private destroyed = false;
   private hiLoCount = 0;
   private behavior = new DealerBehaviorEngine();
   // Insurance offer tracking (only populated during the "insurance" phase).
@@ -159,20 +197,50 @@ export class GameStateMachine {
     };
   }
 
-  private clearTimer(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
+  /**
+   * Schedules work on this machine. All timeouts must go through here so they
+   * can be cancelled wholesale. The callback is skipped entirely if the machine
+   * was destroyed while it was pending.
+   */
+  private schedule(fn: () => void, ms: number): void {
+    const handle = setTimeout(() => {
+      this.timers.delete(handle);
+      if (this.destroyed) return;
+      fn();
+    }, ms);
+    this.timers.add(handle);
   }
 
-  private sync(): void {
-    const state: GameState = {
+  /**
+   * Cancels every pending timeout. Called on each phase transition, so stale
+   * callbacks from the previous phase (a half-finished dealer draw, say) can't
+   * fire into the new one.
+   */
+  private clearTimer(): void {
+    for (const handle of this.timers) {
+      clearTimeout(handle);
+    }
+    this.timers.clear();
+  }
+
+  /**
+   * The state as clients are allowed to see it: face-down cards have their
+   * identity stripped, and the shoe/count are recomputed.
+   *
+   * Every outbound state broadcast must go through this. `this.state` is
+   * server-authoritative and still holds the real hole card.
+   */
+  publicState(): GameState {
+    return {
       ...this.state,
+      dealerHand: redactHand(this.state.dealerHand),
       shoe: this.getShoeState(),
       hiLoCount: this.state.settings.allowCountingHint ? this.hiLoCount : null,
     };
-    this.broadcast("state:sync", state);
+  }
+
+  private sync(): void {
+    this.broadcast("state:sync", this.publicState());
   }
 
   private phaseChange(
@@ -248,7 +316,7 @@ export class GameStateMachine {
     this.sync();
     this.broadcast("state:phase-changed", { phase: "betting" });
 
-    this.timer = setTimeout(() => {
+    this.schedule(() => {
       this.startDealing();
     }, this.state.settings.bettingTimerSeconds * 1000);
   }
@@ -258,11 +326,24 @@ export class GameStateMachine {
     const player = this.getPlayer(playerId);
     if (!player || player.hands.length === 0) return;
 
+    // Validate before clamping. Math.min/max propagate NaN silently, so an
+    // amount of NaN survived the `> chips` guard (NaN comparisons are false)
+    // and poisoned hand.bet — from there chips went NaN at deduction and stayed
+    // NaN through payout and persistence. Fractional amounts had the same shape.
     const { minBet, maxBet } = this.state.settings;
-    const clamped = Math.max(minBet, Math.min(maxBet, amount));
-    if (clamped > player.chips) return;
+    if (!Number.isInteger(amount) || amount < 0) return;
 
-    player.hands[0].bet = clamped;
+    // 0 clears the bet so the player can sit the round out. Clamping it up to
+    // minBet would force them into a wager they explicitly cancelled.
+    let next: number;
+    if (amount === 0) {
+      next = 0;
+    } else {
+      next = Math.max(minBet, Math.min(maxBet, amount));
+      if (next > player.chips) return;
+    }
+
+    player.hands[0].bet = next;
     this.broadcast("state:player-updated", player);
 
     // Once every seated player has bet, shorten the remaining timer to 3 seconds
@@ -276,7 +357,7 @@ export class GameStateMachine {
         this.clearTimer();
         this.state.phaseEndsAt = endsAt;
         this.sync();
-        this.timer = setTimeout(() => this.startDealing(), shortDelay);
+        this.schedule(() => this.startDealing(), shortDelay);
       }
     }
   }
@@ -340,7 +421,10 @@ export class GameStateMachine {
         target,
         playerId,
         handId,
-        card,
+        // Never put the hole card on the wire; the client only draws a back.
+        // It arrives for real via state:dealer-updated when startDealerTurn
+        // flips it.
+        card: faceDown ? { ...HIDDEN_CARD } : card,
         delay,
       });
 
@@ -374,7 +458,7 @@ export class GameStateMachine {
 
     // After dealing animation, offer insurance if the dealer shows an Ace,
     // otherwise move straight to the player turns.
-    setTimeout(() => {
+    this.schedule(() => {
       this.sync();
       this.maybeOfferInsurance();
     }, delay + 200);
@@ -422,7 +506,7 @@ export class GameStateMachine {
     this.phaseChange("insurance", endsAt, null, null);
     this.sync();
 
-    this.timer = setTimeout(() => this.finishInsurance(), INSURANCE_TIMER_SECONDS * 1000);
+    this.schedule(() => this.finishInsurance(), INSURANCE_TIMER_SECONDS * 1000);
   }
 
   handleInsurance(playerId: string, take: boolean): void {
@@ -488,7 +572,7 @@ export class GameStateMachine {
     this.phaseChange("player-turn", endsAt, player.playerId, hand.handId);
     this.sync();
 
-    this.timer = setTimeout(() => {
+    this.schedule(() => {
       this.handleStand(player.playerId, hand.handId);
     }, this.state.settings.turnTimerSeconds * 1000);
   }
@@ -604,7 +688,7 @@ export class GameStateMachine {
       this.clearTimer();
       const endsAt = Date.now() + this.state.settings.turnTimerSeconds * 1000;
       this.state.phaseEndsAt = endsAt;
-      this.timer = setTimeout(() => {
+      this.schedule(() => {
         this.handleStand(playerId, handId);
       }, this.state.settings.turnTimerSeconds * 1000);
     }
@@ -697,16 +781,15 @@ export class GameStateMachine {
 
     this.broadcast("state:player-updated", player);
 
-    // Continue with the current hand
-    this.clearTimer();
-    const endsAt = Date.now() + this.state.settings.turnTimerSeconds * 1000;
-    this.state.phaseEndsAt = endsAt;
-    this.state.activeHandId = hand.handId;
-    this.sync();
-
-    this.timer = setTimeout(() => {
-      this.handleStand(player.playerId, hand.handId);
-    }, this.state.settings.turnTimerSeconds * 1000);
+    // Hand control back to startPlayerTurn instead of re-arming the turn timer
+    // here. It owns the auto-stand-on-21 rule, so splitting into a made 21
+    // (aces against a ten, most often) now stands that hand and moves to the
+    // next one. Re-arming inline skipped that check and let the player draw to
+    // a hand that was already 21.
+    //
+    // findNextActiveHand() lands back on this same hand when it's still live,
+    // because every earlier hand has already stood or busted.
+    this.startPlayerTurn();
   }
 
   // ─── Phase: Dealer Turn ──────────────────────────────────────────────────────
@@ -722,12 +805,12 @@ export class GameStateMachine {
       this.hiLoCount += HILO_VALUES[holeCard.rank];
     }
 
-    this.broadcast("state:dealer-updated", this.state.dealerHand);
+    this.broadcast("state:dealer-updated", redactHand(this.state.dealerHand));
 
     // If dealer has blackjack, skip drawing entirely and go straight to payout.
     // Player blackjacks push; all other non-bust hands lose.
     if (isBlackjack(this.state.dealerHand)) {
-      setTimeout(() => this.startPayout(), 400);
+      this.schedule(() => this.startPayout(), 400);
       return;
     }
 
@@ -752,13 +835,13 @@ export class GameStateMachine {
         this.state.dealerHand.cards.push(card);
         this.broadcast("game:card-dealt", { target: "dealer", card, delay: 0 });
         delay += 600;
-        setTimeout(drawDealer, 600);
+        this.schedule(drawDealer, 600);
       } else {
-        setTimeout(() => this.startPayout(), 400);
+        this.schedule(() => this.startPayout(), 400);
       }
     };
 
-    setTimeout(drawDealer, delay);
+    this.schedule(drawDealer, delay);
   }
 
   // ─── Phase: Payout ────────────────────────────────────────────────────────────
@@ -802,7 +885,7 @@ export class GameStateMachine {
       this.broadcast("state:player-updated", player);
     }
 
-    this.broadcast("state:dealer-updated", this.state.dealerHand);
+    this.broadcast("state:dealer-updated", redactHand(this.state.dealerHand));
     this.broadcast("game:round-result", results);
     this.sync();
 
@@ -813,7 +896,7 @@ export class GameStateMachine {
     this.onRoundEnd?.(this.state.players, results);
 
     // Auto-advance to cleanup after 5 seconds
-    this.timer = setTimeout(() => this.startCleanup(), 5000);
+    this.schedule(() => this.startCleanup(), 5000);
   }
 
   // ─── Phase: Cleanup ──────────────────────────────────────────────────────────
@@ -832,7 +915,7 @@ export class GameStateMachine {
     this.sync();
 
     // Go back to betting after 1.5s
-    this.timer = setTimeout(() => this.startBetting(), 1500);
+    this.schedule(() => this.startBetting(), 1500);
   }
 
   /** Returns the highest non-busted player hand value currently at the table. */
@@ -850,6 +933,9 @@ export class GameStateMachine {
   }
 
   destroy(): void {
+    // Set first: anything already inside a timer callback that re-schedules
+    // will be stopped by the guard in schedule() rather than re-arming.
+    this.destroyed = true;
     this.clearTimer();
   }
 }

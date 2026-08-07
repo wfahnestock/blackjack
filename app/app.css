@@ -11,6 +11,174 @@ body {
   color-scheme: dark;
 }
 
+/* ─── Casino shell tokens ─────────────────────────────────────────────────────
+ *
+ * Shared design language for the pages *around* the game (home, settings,
+ * lobby...). The table itself already had a strong look — felt, wood, brass,
+ * clay chips — while the surrounding pages were generic dark cards, so the
+ * product read as a game bolted into a dashboard. These pull the table's
+ * materials outward. Kept as classes rather than per-page styles so every
+ * shell page can adopt them without duplication.
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --brass:        #c9a227;
+  --brass-bright: #eed388;
+  --brass-dim:    #8a6d1f;
+  --parchment:    #f4e7c4;
+  --parchment-dim:#96854f;
+  --font-display: Georgia, "Times New Roman", serif;
+}
+
+/* Dim felt ground for full-page shells. Darker than the play surface so
+   foreground content stays legible. */
+/* The three stops are variables so the shell can wear whichever felt the player
+   has equipped — see .casino-felt-* below. Values are dimmer than the play
+   surface: this is a lit room, not a lit table. */
+.casino-felt {
+  --felt-lit:  #17452e;
+  --felt-mid:  #0c2b1c;
+  --felt-edge: #04100a;
+
+  background-color: var(--felt-edge);
+  background-image:
+    /* Pool of light centred on the content, falling off hard at the edges so
+       the page reads as a dim room rather than a flat green field. */
+    radial-gradient(ellipse 78% 60% at 50% 46%, var(--felt-lit) 0%, var(--felt-mid) 48%, var(--felt-edge) 100%),
+    radial-gradient(circle 0.5px at 18% 24%, rgba(255,255,255,0.06), transparent),
+    radial-gradient(circle 0.5px at 63% 58%, rgba(255,255,255,0.045), transparent),
+    radial-gradient(circle 0.5px at 84% 15%, rgba(255,255,255,0.035), transparent);
+  background-size: 100% 100%, 15px 15px, 15px 15px, 15px 15px;
+  background-attachment: fixed, scroll, scroll, scroll;
+}
+
+/* Equipped-felt variants. Hues track FELT_PALETTES in TableFelt so the lobby
+   and the table you sit down at are unmistakably the same cloth. Table
+   backgrounds are local-only, so this stays a private flourish for the owner. */
+.casino-felt-midnight { --felt-lit: #1b3a68; --felt-mid: #102246; --felt-edge: #050c1c; }
+.casino-felt-velvet   { --felt-lit: #57223a; --felt-mid: #361427; --felt-edge: #170812; }
+.casino-felt-casino   { --felt-lit: #6b2424; --felt-mid: #421414; --felt-edge: #1c0808; }
+.casino-felt-ocean    { --felt-lit: #12605e; --felt-mid: #0a3b3a; --felt-edge: #031a19; }
+
+/* Wood top rail, mirroring the table's edge. The bottom edge is a darker shade
+   of the rail itself rather than a brass line — the brass reads as a highlighter
+   across the full width and fights the content below it. */
+.casino-rail {
+  background-color: #241407;
+  background-image: linear-gradient(180deg, #3d2717, #1d1006);
+  border-bottom: 2px solid #120a03;
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.55);
+}
+
+.font-display { font-family: var(--font-display); }
+
+/**
+ * Hides the scrollbar while leaving the element scrollable.
+ *
+ * Deliberately not `overflow: hidden` — if the content ever outgrows the
+ * viewport (a narrow window, a long room list, more sections later) it stays
+ * reachable by wheel, trackpad, touch and keyboard, just without the bar
+ * cutting across the felt.
+ */
+.no-scrollbar {
+  scrollbar-width: none;          /* Firefox */
+  -ms-overflow-style: none;       /* legacy Edge */
+}
+.no-scrollbar::-webkit-scrollbar { /* Chrome, Safari */
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+/* Section label: small serif caps, as on casino signage. */
+.casino-eyebrow {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--parchment-dim);
+}
+
+/* Hairline that fades out — replaces boxing things in cards. */
+.brass-rule {
+  height: 1px;
+  border: 0;
+  background: linear-gradient(90deg, rgba(201,162,39,0.42), rgba(201,162,39,0.09), transparent);
+}
+
+.btn-brass {
+  color: #20160a;
+  background-image: linear-gradient(180deg, var(--brass-bright), var(--brass));
+  border: 1px solid var(--brass-dim);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.66), 0 3px 9px rgba(0,0,0,0.5);
+}
+.btn-brass:hover:not(:disabled) { filter: brightness(1.07); }
+.btn-brass:disabled { opacity: 0.45; }
+
+.btn-brass-ghost {
+  color: #d5c398;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(201,162,39,0.25);
+}
+.btn-brass-ghost:hover:not(:disabled) {
+  background: rgba(255,255,255,0.08);
+  border-color: rgba(201,162,39,0.45);
+}
+
+/* Destructive and confirming actions. Deliberately desaturated compared to the
+   usual red/green — a full-saturation button on felt reads as a web form. */
+.btn-danger {
+  color: #ffd9d5;
+  background-image: linear-gradient(180deg, #8e2b25, #6b1d19);
+  border: 1px solid rgba(255,140,130,0.28);
+}
+.btn-danger:hover:not(:disabled) { filter: brightness(1.12); }
+.btn-danger:disabled { opacity: 0.35; }
+
+.btn-go {
+  color: #d6ffe8;
+  background-image: linear-gradient(180deg, #1f6b47, #145334);
+  border: 1px solid rgba(120,240,180,0.24);
+}
+.btn-go:hover:not(:disabled) { filter: brightness(1.12); }
+.btn-go:disabled { opacity: 0.35; }
+
+/**
+ * Surface for content sitting on the felt. Translucent black rather than a
+ * solid grey so the felt (and therefore the player's equipped skin) still
+ * reads through it.
+ */
+.casino-panel {
+  background: rgba(0,0,0,0.30);
+  border: 1px solid rgba(201,162,39,0.16);
+  border-radius: 6px;
+}
+
+.casino-input {
+  background: rgba(0,0,0,0.32);
+  border: 1px solid rgba(201,162,39,0.20);
+  border-radius: 6px;
+  color: #f0e4c6;
+  transition: border-color 120ms ease;
+}
+.casino-input::placeholder { color: #6b6144; }
+.casino-input:focus { outline: none; border-color: rgba(201,162,39,0.55); }
+.casino-input:disabled { opacity: 0.4; }
+
+/* Segmented control used for the leaderboard stat picker and modal tabs. */
+.casino-seg {
+  color: #a8996d;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+}
+.casino-seg:hover { color: var(--parchment); background: rgba(255,255,255,0.04); }
+.casino-seg[data-active="true"] {
+  color: #f7edd4;
+  background: rgba(201,162,39,0.14);
+  border-color: rgba(201,162,39,0.42);
+}
+
 /* ─── Felt table background ─────────────────────────────────────────────────── */
 .felt-bg {
   background-color: #0d3320;

@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
-import { Navigate, Link } from "react-router";
+import { Navigate } from "react-router";
 import type { Route } from "./+types/home";
 import { useAuth } from "~/lib/AuthContext";
 import { DisplayName } from "~/components/ui/DisplayName";
+import { ProfileModal } from "~/components/ui/ProfileModal";
+import { ShellLayout } from "~/components/shell/ShellLayout";
 
 export function meta({}: Route.MetaArgs) {
-  return [{ title: "Leaderboard · Blackjack" }];
+  return [{ title: "Leaderboard — Blackjack" }];
 }
 
 type LeaderboardStat = "chips" | "netWinnings" | "handsPlayed";
@@ -21,58 +23,29 @@ type LeaderboardEntry = {
 const STATS: {
   key: LeaderboardStat;
   label: string;
+  unit: string;
   format: (v: number) => string;
 }[] = [
-  { key: "chips", label: "Total Chips", format: (v) => v.toLocaleString() },
+  { key: "chips", label: "Total Chips", unit: "chips", format: (v) => v.toLocaleString() },
   {
     key: "netWinnings",
     label: "Net Winnings",
+    unit: "net",
     format: (v) => (v >= 0 ? "+" : "") + v.toLocaleString(),
   },
-  { key: "handsPlayed", label: "Hands Played", format: (v) => v.toLocaleString() },
+  { key: "handsPlayed", label: "Hands Played", unit: "hands", format: (v) => v.toLocaleString() },
 ];
 
-function TrophyIcon({ rank }: { rank: number }) {
-  if (rank === 1) return <span aria-label="Gold trophy">🏆</span>;
-  if (rank === 2) return <span aria-label="Silver medal">🥈</span>;
-  if (rank === 3) return <span aria-label="Bronze medal">🥉</span>;
-  return null;
-}
-
-function rankStyles(rank: number): {
-  text: string;
-  rank: string;
-  value: string;
-  row: string;
-} {
-  if (rank === 1)
-    return {
-      text: "text-2xl font-black",
-      rank: "text-2xl font-black text-yellow-400",
-      value: "text-2xl font-black",
-      row: "py-5",
-    };
-  if (rank === 2)
-    return {
-      text: "text-xl font-bold",
-      rank: "text-xl font-bold text-gray-300",
-      value: "text-xl font-bold",
-      row: "py-4",
-    };
-  if (rank === 3)
-    return {
-      text: "text-lg font-semibold",
-      rank: "text-lg font-semibold text-amber-500",
-      value: "text-lg font-semibold",
-      row: "py-4",
-    };
-  return {
-    text: "text-base font-medium",
-    rank: "text-base font-medium text-gray-500",
-    value: "text-base font-medium",
-    row: "py-3",
-  };
-}
+/**
+ * Medal colouring for the top three. Brass, silver and copper rather than
+ * emoji: the emoji rendered at three different sizes and dragged the row
+ * heights around with it.
+ */
+const MEDALS: Record<number, { ring: string; text: string }> = {
+  1: { ring: "border-[#e8cd7a] bg-[#e8cd7a]/12", text: "text-[#f0dca4]" },
+  2: { ring: "border-[#c9ccd4]/70 bg-[#c9ccd4]/10", text: "text-[#d6d9e0]" },
+  3: { ring: "border-[#c17a49]/70 bg-[#c17a49]/10", text: "text-[#d99a69]" },
+};
 
 export default function Leaderboard() {
   const { user, token } = useAuth();
@@ -80,8 +53,7 @@ export default function Leaderboard() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  if (!user) return <Navigate to="/login" replace />;
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -100,98 +72,126 @@ export default function Leaderboard() {
       });
   }, [stat, token]);
 
+  // Guard *after* every hook — signing out flips `user` to null, and returning
+  // above the hooks would change the hook count between renders.
+  if (!user) return <Navigate to="/login" replace />;
+
   const currentStat = STATS.find((s) => s.key === stat)!;
 
   return (
-    <div className="min-h-screen px-4 py-12">
-      <div className="w-full max-w-2xl mx-auto flex flex-col gap-8">
-        {/* Header */}
-        <div className="text-center">
-          <div className="text-5xl mb-3 select-none">🏆</div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Leaderboard</h1>
-          <Link
-            to="/"
-            className="text-sm text-gray-500 hover:text-gray-400 transition-colors mt-2 inline-block"
-          >
-            ← Back to home
-          </Link>
+    <>
+      <ProfileModal
+        playerId={profileId}
+        onClose={() => setProfileId(null)}
+        selfPlayerId={user.playerId}
+      />
+
+      <ShellLayout contentClassName="px-4 py-8">
+        <div className="w-full max-w-3xl mx-auto">
+          <div className="flex items-baseline justify-between gap-4 mb-5">
+            <h1 className="font-display text-2xl text-[var(--parchment)]">Leaderboard</h1>
+            <span className="casino-eyebrow">Top {entries.length || "—"}</span>
+          </div>
+
+          {/* Stat picker */}
+          <div className="flex gap-1 mb-5">
+            {STATS.map((s) => (
+              <button
+                key={s.key}
+                onClick={() => setStat(s.key)}
+                data-active={stat === s.key}
+                className="casino-seg flex-1 py-2 px-3 text-[12px] font-semibold uppercase tracking-[0.09em]"
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="casino-panel overflow-hidden">
+            {loading && (
+              <p className="py-16 text-center text-[12px] text-[var(--parchment-dim)]">
+                Loading…
+              </p>
+            )}
+            {error && (
+              <p className="py-16 text-center text-[12px] text-red-300">{error}</p>
+            )}
+            {!loading && !error && entries.length === 0 && (
+              <p className="py-16 text-center text-[12px] text-[var(--parchment-dim)]">
+                No hands played yet.
+              </p>
+            )}
+
+            {!loading &&
+              !error &&
+              entries.map((entry, i) => {
+                const rank = i + 1;
+                const medal = MEDALS[rank];
+                const isSelf = entry.playerId === user.playerId;
+
+                const valueColor =
+                  stat === "netWinnings"
+                    ? entry.value >= 0
+                      ? "text-emerald-300"
+                      : "text-red-300"
+                    : "text-[#f0e4c6]";
+
+                return (
+                  <button
+                    key={entry.playerId}
+                    onClick={() => setProfileId(entry.playerId)}
+                    className={`group grid w-full grid-cols-[2.25rem_1.75rem_1fr_auto] items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                      i < entries.length - 1
+                        ? "border-b border-[var(--brass)]/10"
+                        : ""
+                    } ${isSelf ? "bg-[var(--brass)]/[0.07]" : "hover:bg-white/[0.035]"}`}
+                  >
+                    {/* Rank chip — same box at every rank so rows stay level. */}
+                    <span
+                      className={`flex h-7 w-7 items-center justify-center rounded-full border text-[12px] font-bold tabular-nums ${
+                        medal
+                          ? `${medal.ring} ${medal.text}`
+                          : "border-transparent text-[#7d6f4d]"
+                      }`}
+                    >
+                      {rank}
+                    </span>
+
+                    <span
+                      className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-bold text-white"
+                      style={{ backgroundColor: entry.avatarColor }}
+                    >
+                      {entry.displayName.charAt(0).toUpperCase()}
+                    </span>
+
+                    <span className="min-w-0 flex items-center gap-2">
+                      <DisplayName
+                        displayName={entry.displayName}
+                        nameEffect={entry.nameEffect}
+                        className="truncate text-[13.5px] text-[#e6d9b6]"
+                      />
+                      {isSelf && (
+                        <span className="shrink-0 rounded border border-[var(--brass)]/30 px-1.5 py-px text-[9px] uppercase tracking-[0.12em] text-[var(--parchment-dim)]">
+                          You
+                        </span>
+                      )}
+                    </span>
+
+                    <span
+                      className={`text-right text-[14px] font-semibold tabular-nums ${valueColor}`}
+                    >
+                      {currentStat.format(entry.value)}
+                    </span>
+                  </button>
+                );
+              })}
+          </div>
+
+          <p className="mt-3 text-[11px] text-[#7d6f4d]">
+            Ranked by {currentStat.unit}. Select a player to view their profile.
+          </p>
         </div>
-
-        {/* Stat selector */}
-        <div className="flex gap-1 bg-gray-900 rounded-xl p-1 border border-gray-800">
-          {STATS.map((s) => (
-            <button
-              key={s.key}
-              onClick={() => setStat(s.key)}
-              className={`flex-1 py-2 px-3 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
-                stat === s.key
-                  ? "bg-emerald-600 text-white"
-                  : "text-gray-400 hover:text-gray-200"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Leaderboard list */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-          {loading && (
-            <div className="text-center py-16 text-gray-500 text-sm">Loading...</div>
-          )}
-          {error && (
-            <div className="text-center py-16 text-red-400 text-sm">{error}</div>
-          )}
-          {!loading && !error && entries.length === 0 && (
-            <div className="text-center py-16 text-gray-500 text-sm">No data yet</div>
-          )}
-          {!loading &&
-            !error &&
-            entries.map((entry, i) => {
-              const rank = i + 1;
-              const styles = rankStyles(rank);
-              const isTop3 = rank <= 3;
-
-              const valueColor =
-                stat === "netWinnings"
-                  ? entry.value >= 0
-                    ? "text-emerald-400"
-                    : "text-red-400"
-                  : "text-gray-200";
-
-              return (
-                <div
-                  key={entry.playerId}
-                  className={`grid grid-cols-[2rem_2rem_1fr_8rem] items-center px-6 gap-4 ${styles.row} ${
-                    i < entries.length - 1 ? "border-b border-gray-800/60" : ""
-                  } ${isTop3 ? "bg-gray-800/20" : ""}`}
-                >
-                  {/* Rank — fixed width */}
-                  <span className={`${styles.rank} text-left`}>
-                    {rank}
-                  </span>
-
-                  {/* Trophy — fixed width, empty for rank 4+ */}
-                  <span className={`text-center ${rank === 1 ? "text-2xl" : rank === 2 ? "text-xl" : "text-lg"}`}>
-                    {isTop3 && <TrophyIcon rank={rank} />}
-                  </span>
-
-                  {/* Player name — always the same column, always centered */}
-                  <DisplayName
-                    displayName={entry.displayName}
-                    nameEffect={entry.nameEffect}
-                    className={`${styles.text} truncate text-center`}
-                  />
-
-                  {/* Value — fixed width */}
-                  <span className={`${styles.value} ${valueColor} text-right tabular-nums`}>
-                    {currentStat.format(entry.value)}
-                  </span>
-                </div>
-              );
-            })}
-        </div>
-      </div>
-    </div>
+      </ShellLayout>
+    </>
   );
 }

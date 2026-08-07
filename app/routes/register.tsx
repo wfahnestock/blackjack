@@ -43,17 +43,17 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm flex flex-col gap-8">
+    <div className="casino-felt min-h-screen flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-sm flex flex-col gap-6">
         <div className="text-center">
-          <div className="text-6xl mb-3 select-none">♠</div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Blackjack</h1>
-          <p className="text-gray-500 mt-2">Create your account</p>
+          <div className="mb-1 select-none text-4xl text-[var(--brass)]">♠</div>
+          <h1 className="font-display text-4xl text-[var(--parchment)]">Blackjack</h1>
+          <p className="casino-eyebrow mt-2">Create your account</p>
         </div>
 
         <form
           onSubmit={handleSubmit}
-          className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4"
+          className="casino-panel flex flex-col gap-4 p-6"
         >
           <Input
             label="Username"
@@ -65,7 +65,9 @@ export default function Register() {
             autoFocus
             maxLength={32}
           />
-          <p className="text-xs text-gray-600 -mt-2">Letters, numbers, and underscores only</p>
+          <p className="-mt-2 text-[11px] text-[#7d6f4d]">
+            Letters, numbers, and underscores only
+          </p>
 
           <Input
             label="Display Name"
@@ -77,7 +79,7 @@ export default function Register() {
           />
 
           <div className="flex flex-col gap-2">
-            <span className="text-sm font-medium text-gray-300">Avatar Color</span>
+            <span className="casino-eyebrow">Avatar Colour</span>
             <div className="flex gap-2 flex-wrap">
               {AVATAR_COLORS.map((color) => (
                 <button
@@ -86,7 +88,7 @@ export default function Register() {
                   onClick={() => setAvatarColor(color)}
                   className={`w-8 h-8 rounded-full transition-all duration-150 ${
                     avatarColor === color
-                      ? "ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110"
+                      ? "ring-2 ring-[var(--brass)] ring-offset-2 ring-offset-[#0b0906] scale-110"
                       : "hover:scale-105"
                   }`}
                   style={{ backgroundColor: color }}
@@ -114,7 +116,7 @@ export default function Register() {
             autoComplete="new-password"
           />
 
-          {error && <p className="text-sm text-red-400">{error}</p>}
+          {error && <p className="text-[12px] text-red-300">{error}</p>}
 
           <Button
             variant="primary"
@@ -128,12 +130,15 @@ export default function Register() {
               !confirmPassword
             }
           >
-            {loading ? "Creating account..." : "Create Account"}
+            {loading ? "Creating account…" : "Create Account"}
           </Button>
 
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-[12px] text-[var(--parchment-dim)]">
             Already have an account?{" "}
-            <Link to="/login" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+            <Link
+              to="/login"
+              className="text-[#e8cd7a] underline-offset-2 transition-colors hover:text-[#f5e2a6] hover:underline"
+            >
               Sign in
             </Link>
           </p>

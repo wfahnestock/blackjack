@@ -1,14 +1,10 @@
-import { useState, useEffect } from "react";
-import { useNavigate, Navigate } from "react-router";
-import { Button } from "~/components/ui/Button";
-import { Input } from "~/components/ui/Input";
+import { useState } from "react";
+import { Navigate } from "react-router";
 import { DisplayName } from "~/components/ui/DisplayName";
+import { Toggle } from "~/components/ui/Toggle";
+import { ShellLayout } from "~/components/shell/ShellLayout";
 import { useAuth } from "~/lib/AuthContext";
 import { AVATAR_COLORS } from "~/lib/usePlayer";
-import { NAME_EFFECTS, nameEffectClass, type NameEffectDef } from "~/lib/nameEffects";
-import { CARD_SKINS, cardSkinFaceClass, cardSkinBackClass, type CardSkinDef } from "~/lib/cardSkins";
-import { TABLE_BGS, tableBgClass, type TableBgDef } from "~/lib/tableBgs";
-import { PlayingCard } from "~/components/game/PlayingCard";
 import { useSoundSettings } from "~/lib/useSoundSettings";
 import type { ChipSound } from "~/lib/soundManager";
 
@@ -21,32 +17,26 @@ const CHIP_SOUND_OPTIONS: { value: ChipSound; label: string; hint: string }[] = 
 ];
 
 export function meta() {
-  return [{ title: "Account Settings — Blackjack" }];
+  return [{ title: "Settings — Blackjack" }];
 }
 
-// ─── Name-effect shop state ───────────────────────────────────────────────────
+type Section = "profile" | "security" | "sound";
 
-interface VanityState {
-  owned: string[];       // effect keys the player owns (never includes "default")
-  equipped: string | null;
-  loading: boolean;
-  actionLoading: string | null; // effectKey currently being bought or equipped
-  error: string;
-}
+const SECTIONS: { key: Section; label: string; icon: string }[] = [
+  { key: "profile", label: "Profile", icon: "fa-user" },
+  { key: "security", label: "Security", icon: "fa-lock" },
+  { key: "sound", label: "Sound", icon: "fa-volume-high" },
+];
 
-// ─── Skin shop state ──────────────────────────────────────────────────────────
+/* Shared field styling — settings is form-heavy, so these keep the casino
+   palette consistent without a class soup at every input. */
+const FIELD =
+  "w-full rounded-md bg-black/30 border border-[var(--brass)]/20 px-3 py-2 text-sm text-[#f0e4c6] placeholder:text-[#6b6144] focus:border-[var(--brass)]/55 focus:outline-none transition-colors";
+const LABEL = "block text-[11px] uppercase tracking-[0.14em] text-[var(--parchment-dim)] mb-1.5";
 
-interface SkinShopState {
-  owned: string[];
-  equipped: string | null;
-  loading: boolean;
-  actionLoading: string | null;
-  error: string;
-}
 
 export default function Settings() {
-  const navigate = useNavigate();
-  const { user, token, updateUserProfile, updateEquippedEffect, updateUserChips, updateEquippedCardSkin, updateEquippedTableBg } = useAuth();
+  const { user, token, updateUserProfile } = useAuth();
   const {
     muted: soundMuted,
     volume: soundVolume,
@@ -59,203 +49,25 @@ export default function Settings() {
     preview: previewSound,
   } = useSoundSettings();
 
+  const [section, setSection] = useState<Section>("profile");
+
+  const [displayName, setDisplayName] = useState(user?.displayName ?? "");
+  const [avatarColor, setAvatarColor] = useState(user?.avatarColor ?? AVATAR_COLORS[0]);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  // Guard *after* every hook. Signing out from this page flips `user` to null,
+  // and bailing out above the useState calls would change the hook count
+  // between renders and crash React.
   if (!user) return <Navigate to="/login" replace />;
 
-  // ─── Profile form ──────────────────────────────────────────────────────────
-  const [displayName, setDisplayName]       = useState(user.displayName);
-  const [avatarColor, setAvatarColor]       = useState(user.avatarColor);
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword]       = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading]               = useState(false);
-  const [error, setError]                   = useState("");
-  const [success, setSuccess]               = useState(false);
-
-  // ─── Vanity shop ───────────────────────────────────────────────────────────
-  const [vanity, setVanity] = useState<VanityState>({
-    owned:         [],
-    equipped:      user.equippedNameEffect ?? null,
-    loading:       true,
-    actionLoading: null,
-    error:         "",
-  });
-
-  useEffect(() => {
-    fetch("/api/vanity/name-effects", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { owned: string[]; equipped: string | null }) => {
-        setVanity((v) => ({ ...v, owned: data.owned, equipped: data.equipped, loading: false }));
-      })
-      .catch(() => {
-        setVanity((v) => ({ ...v, loading: false, error: "Couldn't load name effects" }));
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ─── Card skin shop ────────────────────────────────────────────────────────
-  const [cardSkins, setCardSkins] = useState<SkinShopState>({
-    owned:         [],
-    equipped:      user?.equippedCardSkin ?? null,
-    loading:       true,
-    actionLoading: null,
-    error:         "",
-  });
-
-  useEffect(() => {
-    fetch("/api/vanity/card-skins", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { owned: string[]; equipped: string | null }) => {
-        setCardSkins((v) => ({ ...v, owned: data.owned, equipped: data.equipped, loading: false }));
-      })
-      .catch(() => {
-        setCardSkins((v) => ({ ...v, loading: false, error: "Couldn't load card skins" }));
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  function ownsSkin(state: SkinShopState, key: string): boolean {
-    return key === "default" || state.owned.includes(key);
-  }
-
-  async function handlePurchaseSkin(
-    setState: React.Dispatch<React.SetStateAction<SkinShopState>>,
-    skin: CardSkinDef | TableBgDef,
-    endpoint: string
-  ) {
-    setState((v) => ({ ...v, actionLoading: skin.key, error: "" }));
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ skinKey: skin.key }),
-      });
-      const data = (await res.json()) as { chips?: number; error?: string };
-      if (!res.ok) {
-        setState((v) => ({ ...v, actionLoading: null, error: data.error ?? "Purchase failed" }));
-        return;
-      }
-      setState((v) => ({ ...v, owned: [...v.owned, skin.key], actionLoading: null }));
-      if (data.chips != null) updateUserChips(data.chips);
-    } catch {
-      setState((v) => ({ ...v, actionLoading: null, error: "Network error" }));
-    }
-  }
-
-  async function handleEquipSkin(
-    setState: React.Dispatch<React.SetStateAction<SkinShopState>>,
-    skinKey: string | null,
-    endpoint: string,
-    onSuccess: (key: string | null) => void
-  ) {
-    const key = skinKey === "default" ? null : skinKey;
-    setState((v) => ({ ...v, actionLoading: skinKey ?? "default", error: "" }));
-    try {
-      const res = await fetch(endpoint, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ skinKey: key }),
-      });
-      const data = (await res.json()) as { skinKey: string | null; error?: string };
-      if (!res.ok) {
-        setState((v) => ({ ...v, actionLoading: null, error: data.error ?? "Equip failed" }));
-        return;
-      }
-      setState((v) => ({ ...v, equipped: data.skinKey, actionLoading: null }));
-      onSuccess(data.skinKey);
-    } catch {
-      setState((v) => ({ ...v, actionLoading: null, error: "Network error" }));
-    }
-  }
-
-  // ─── Table background shop ─────────────────────────────────────────────────
-  const [tableBgs, setTableBgs] = useState<SkinShopState>({
-    owned:         [],
-    equipped:      user?.equippedTableBg ?? null,
-    loading:       true,
-    actionLoading: null,
-    error:         "",
-  });
-
-  useEffect(() => {
-    fetch("/api/vanity/table-bgs", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => (r.ok ? r.json() : Promise.reject()))
-      .then((data: { owned: string[]; equipped: string | null }) => {
-        setTableBgs((v) => ({ ...v, owned: data.owned, equipped: data.equipped, loading: false }));
-      })
-      .catch(() => {
-        setTableBgs((v) => ({ ...v, loading: false, error: "Couldn't load backgrounds" }));
-      });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const userRoles = user?.roles ?? [];
-
-  /** Effects visible to this player (role-locked ones only shown if user qualifies). */
-  const visibleEffects = NAME_EFFECTS.filter((effect) => {
-    if (!effect.requiredRole) return true;
-    return userRoles.some((r) => r.name === effect.requiredRole);
-  });
-
-  function ownsEffect(key: string): boolean {
-    const effect = NAME_EFFECTS.find((e) => e.key === key);
-    // Role-locked effects are always "owned" for players who have the required role
-    if (effect?.requiredRole) {
-      return userRoles.some((r) => r.name === effect.requiredRole);
-    }
-    return key === "default" || vanity.owned.includes(key);
-  }
-
-  async function handlePurchase(effect: NameEffectDef) {
-    if (vanity.actionLoading) return;
-    setVanity((v) => ({ ...v, actionLoading: effect.key, error: "" }));
-    try {
-      const res = await fetch("/api/vanity/name-effects/purchase", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ effectKey: effect.key }),
-      });
-      const data = (await res.json()) as { chips?: number; error?: string };
-      if (!res.ok) {
-        setVanity((v) => ({ ...v, actionLoading: null, error: data.error ?? "Purchase failed" }));
-        return;
-      }
-      setVanity((v) => ({ ...v, owned: [...v.owned, effect.key], actionLoading: null }));
-      if (data.chips != null) updateUserChips(data.chips);
-    } catch {
-      setVanity((v) => ({ ...v, actionLoading: null, error: "Network error" }));
-    }
-  }
-
-  async function handleEquip(effectKey: string | null) {
-    if (vanity.actionLoading) return;
-    const key = effectKey === "default" ? null : effectKey;
-    setVanity((v) => ({ ...v, actionLoading: effectKey ?? "default", error: "" }));
-    try {
-      const res = await fetch("/api/vanity/name-effects/equip", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ effectKey: key }),
-      });
-      const data = (await res.json()) as { effectKey: string | null; error?: string };
-      if (!res.ok) {
-        setVanity((v) => ({ ...v, actionLoading: null, error: data.error ?? "Equip failed" }));
-        return;
-      }
-      setVanity((v) => ({ ...v, equipped: data.effectKey, actionLoading: null }));
-      updateEquippedEffect(data.effectKey);
-    } catch {
-      setVanity((v) => ({ ...v, actionLoading: null, error: "Network error" }));
-    }
-  }
-
-  // ─── Profile form submit ───────────────────────────────────────────────────
   const changingPassword = Boolean(currentPassword || newPassword || confirmPassword);
+  const previewLetter =
+    displayName.trim().charAt(0).toUpperCase() || user.username.charAt(0).toUpperCase();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -266,7 +78,7 @@ export default function Settings() {
         setError("New passwords do not match");
         return;
       }
-      if (newPassword.length < 8) {
+      if (newPassword.length < 12) {
         setError("New password must be at least 12 characters");
         return;
       }
@@ -285,14 +97,14 @@ export default function Settings() {
 
       const res = await fetch(`/api/players/${user.playerId}/settings`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify(body),
       });
-
-      const data = (await res.json()) as { displayName?: string; avatarColor?: string; error?: string };
+      const data = (await res.json()) as {
+        displayName?: string;
+        avatarColor?: string;
+        error?: string;
+      };
 
       if (!res.ok) {
         setError(data.error ?? "Failed to save settings");
@@ -311,492 +123,279 @@ export default function Settings() {
     }
   };
 
-  const previewLetter = displayName.trim().charAt(0).toUpperCase() || user.username.charAt(0).toUpperCase();
-
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm flex flex-col gap-8">
-        <div className="text-center">
-          <div className="text-6xl mb-3 select-none">♠</div>
-          <h1 className="text-4xl font-black text-white tracking-tight">Settings</h1>
-          <p className="text-gray-500 mt-2">Manage your account</p>
-        </div>
+    <ShellLayout contentClassName="px-4 py-8">
+      <div className="w-full max-w-5xl mx-auto">
+        <h1 className="font-display text-2xl text-[var(--parchment)] mb-5">Settings</h1>
 
-        {/* ── Profile form ── */}
-        <form
-          onSubmit={handleSubmit}
-          className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-5"
-        >
-          {/* Profile section */}
-          <div className="flex flex-col gap-4">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Profile</h2>
-
-            {/* Live preview */}
-            <div className="flex items-center gap-3">
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0 transition-colors"
-                style={{ backgroundColor: avatarColor }}
-              >
-                {previewLetter}
-              </div>
-              <div>
-                <p className="font-semibold leading-tight">
-                  {displayName.trim() ? (
-                    <DisplayName
-                      displayName={displayName.trim()}
-                      nameEffect={vanity.equipped}
-                      className="text-white"
-                    />
-                  ) : (
-                    <span className="text-gray-600">Display name</span>
-                  )}
-                </p>
-                <p className="text-sm text-gray-500">@{user.username}</p>
-              </div>
-            </div>
-
-            <Input
-              label="Display Name"
-              id="display-name"
-              value={displayName}
-              onChange={(e) => {
-                setDisplayName(e.target.value);
-                setSuccess(false);
-              }}
-              placeholder="How others see you in game"
-              maxLength={50}
-            />
-
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-gray-300">Avatar Color</span>
-              <div className="flex gap-2 flex-wrap">
-                {AVATAR_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => {
-                      setAvatarColor(color);
-                      setSuccess(false);
-                    }}
-                    className={`w-8 h-8 rounded-full transition-all duration-150 ${
-                      avatarColor === color
-                        ? "ring-2 ring-white ring-offset-2 ring-offset-gray-900 scale-110"
-                        : "hover:scale-105"
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800" />
-
-          {/* Password section */}
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Change Password</h2>
-              <p className="text-xs text-gray-600 mt-1">Leave blank to keep your current password</p>
-            </div>
-
-            <Input
-              label="Current Password"
-              id="current-password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => { setCurrentPassword(e.target.value); setSuccess(false); setError(""); }}
-              placeholder="••••••••"
-              autoComplete="current-password"
-            />
-            <Input
-              label="New Password"
-              id="new-password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => { setNewPassword(e.target.value); setSuccess(false); setError(""); }}
-              placeholder="At least 12 characters"
-              autoComplete="new-password"
-            />
-            <Input
-              label="Confirm New Password"
-              id="confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => { setConfirmPassword(e.target.value); setSuccess(false); setError(""); }}
-              placeholder="••••••••"
-              autoComplete="new-password"
-            />
-          </div>
-
-          {error   && <p className="text-sm text-red-400">{error}</p>}
-          {success && <p className="text-sm text-emerald-400">Settings saved successfully.</p>}
-
-          <Button variant="primary" size="lg" type="submit" disabled={loading || !displayName.trim()}>
-            {loading ? "Saving..." : "Save Changes"}
-          </Button>
-
-          <Button variant="ghost" size="md" type="button" onClick={() => navigate("/")}>
-            Back to Home
-          </Button>
-        </form>
-
-        {/* ── Sound ── */}
-        {/* Outside the form on purpose: these are local device preferences
-            (localStorage), not account settings, so they apply instantly and
-            must not be swept up by "Save Changes". */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
-          <div>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sound</h2>
-            <p className="text-xs text-gray-600 mt-1">
-              Saved on this device and applied immediately.
-            </p>
-          </div>
-
-          <label className="flex items-center justify-between gap-4 cursor-pointer">
-            <span className="text-sm text-gray-300">Mute all sound</span>
-            <input
-              type="checkbox"
-              checked={soundMuted}
-              onChange={(e) => setSoundMuted(e.target.checked)}
-              className="w-4 h-4 accent-emerald-500 cursor-pointer"
-            />
-          </label>
-
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className={`text-sm ${soundMuted ? "text-gray-600" : "text-gray-300"}`}>
-                Volume
-              </span>
-              <span className="text-xs tabular-nums text-gray-500">
-                {Math.round(soundVolume * 100)}%
-              </span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={soundVolume}
-              disabled={soundMuted}
-              onChange={(e) => setSoundVolume(Number(e.target.value))}
-              onMouseUp={previewSound}
-              onTouchEnd={previewSound}
-              className="w-full accent-emerald-500 disabled:opacity-40 cursor-pointer"
-            />
-          </div>
-
-          <label className="flex items-start justify-between gap-4 cursor-pointer">
-            <span>
-              <span className={`text-sm ${soundMuted ? "text-gray-600" : "text-gray-300"}`}>
-                Table sounds
-              </span>
-              <span className="block text-xs text-gray-600 mt-0.5">
-                Hear other players hit, stand, double and hit blackjack. Turn off to
-                only hear your own seat.
-              </span>
-            </span>
-            <input
-              type="checkbox"
-              checked={tableSounds}
-              disabled={soundMuted}
-              onChange={(e) => setTableSounds(e.target.checked)}
-              className="w-4 h-4 mt-0.5 shrink-0 accent-emerald-500 disabled:opacity-40 cursor-pointer"
-            />
-          </label>
-
-          <div className="flex flex-col gap-2">
-            <div>
-              <span className={`text-sm ${soundMuted ? "text-gray-600" : "text-gray-300"}`}>
-                Chip sound
-              </span>
-              <span className="block text-xs text-gray-600 mt-0.5">
-                Plays every time you add to a bet. Click one to hear it.
-              </span>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {CHIP_SOUND_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  disabled={soundMuted}
-                  onClick={() => setChipSound(opt.value)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                    chipSound === opt.value
-                      ? "bg-emerald-600 text-white"
-                      : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-                  }`}
-                  title={opt.hint}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Name Effects shop ── */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
-          <div>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Name Effects</h2>
-            <p className="text-xs text-gray-600 mt-1">
-              Purchase effects with chips to change how your name looks everywhere in game.
-            </p>
-          </div>
-
-          {vanity.error && <p className="text-sm text-red-400">{vanity.error}</p>}
-
-          {vanity.loading ? (
-            <p className="text-sm text-gray-500 text-center py-4">Loading…</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {visibleEffects.map((effect) => {
-                const owned    = ownsEffect(effect.key);
-                const equipped = vanity.equipped === effect.key
-                               || (effect.key === "default" && !vanity.equipped);
-                const isActing = vanity.actionLoading === effect.key;
-
+        <div className="grid gap-7 md:grid-cols-[168px_1fr]">
+          {/* ── Section rail ── */}
+          <nav className="md:border-r md:border-[var(--brass)]/15 md:pr-4">
+            <div className="flex md:flex-col gap-1 overflow-x-auto no-scrollbar">
+              {SECTIONS.map((s) => {
+                const on = s.key === section;
                 return (
-                  <div
-                    key={effect.key}
-                    className={`
-                      flex flex-col gap-2 p-3 rounded-xl border transition-colors
-                      ${equipped
-                        ? "border-emerald-500/50 bg-emerald-950/30"
-                        : "border-gray-700/60 bg-gray-800/40"}
-                    `}
+                  <button
+                    key={s.key}
+                    onClick={() => setSection(s.key)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded text-[12px] whitespace-nowrap transition-colors ${
+                      on
+                        ? "bg-white/[0.07] text-[var(--parchment)] shadow-[inset_2px_0_0_var(--brass)]"
+                        : "text-[#9c8c66] hover:text-[#d5c398] hover:bg-white/[0.03]"
+                    }`}
                   >
-                    {/* Effect name preview */}
-                    <p
-                      className={`text-sm font-bold truncate ${nameEffectClass(effect.key) || "text-white"}`}
-                      style={nameEffectClass(effect.key) ? { overflow: "clip", overflowClipMargin: "30px" } : undefined}
-                    >
-                      {effect.label}
-                    </p>
-
-                    {/* Cost or status */}
-                    <p className="text-xs text-gray-500 leading-tight">{effect.description}</p>
-
-                    {equipped ? (
-                      <span className="text-xs font-semibold text-emerald-400">✓ Equipped</span>
-                    ) : owned ? (
-                      <button
-                        onClick={() => handleEquip(effect.key)}
-                        disabled={!!vanity.actionLoading}
-                        className="text-xs font-semibold text-gray-300 hover:text-white transition-colors disabled:opacity-50 text-left"
-                      >
-                        {isActing ? "Equipping…" : "Equip"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handlePurchase(effect)}
-                        disabled={!!vanity.actionLoading || user.chips < effect.cost}
-                        className="text-xs font-semibold text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50 text-left"
-                      >
-                        {isActing
-                          ? "Buying…"
-                          : `${effect.cost.toLocaleString()} chips`}
-                      </button>
-                    )}
-                  </div>
+                    <i className={`fa-solid ${s.icon} text-[11px] opacity-80`} />
+                    {s.label}
+                  </button>
                 );
               })}
             </div>
-          )}
+          </nav>
 
-          {/* Unequip button — only shown when something non-default is equipped */}
-          {vanity.equipped && (
-            <button
-              onClick={() => handleEquip(null)}
-              disabled={!!vanity.actionLoading}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors self-center disabled:opacity-50"
-            >
-              {vanity.actionLoading === null && vanity.equipped ? "Remove effect" : "Removing…"}
-            </button>
-          )}
-        </div>
-
-        {/* ── Card Skins shop ── */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
-          <div>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Card Skins</h2>
-            <p className="text-xs text-gray-600 mt-1">
-              Style your deck. Other players can see your card skin at the table.
-            </p>
-          </div>
-
-          {/* Preview */}
-          <div className="flex items-center gap-3 py-1">
-            <PlayingCard
-              card={{ suit: "spades", rank: "A", faceDown: false }}
-              skin={cardSkins.equipped}
-              small
-            />
-            <PlayingCard
-              card={{ suit: "hearts", rank: "K", faceDown: true }}
-              skin={cardSkins.equipped}
-              small
-            />
-            <span className="text-xs text-gray-500 ml-1">
-              {CARD_SKINS.find((s) => s.key === (cardSkins.equipped ?? "default"))?.label ?? "Default"}
-            </span>
-          </div>
-
-          {cardSkins.error && <p className="text-sm text-red-400">{cardSkins.error}</p>}
-
-          {cardSkins.loading ? (
-            <p className="text-sm text-gray-500 text-center py-4">Loading…</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {CARD_SKINS.map((skin) => {
-                const owned    = ownsSkin(cardSkins, skin.key);
-                const equipped = cardSkins.equipped === skin.key
-                               || (skin.key === "default" && !cardSkins.equipped);
-                const isActing = cardSkins.actionLoading === skin.key;
-
-                return (
-                  <div
-                    key={skin.key}
-                    className={`
-                      flex flex-col gap-2 p-3 rounded-xl border transition-colors
-                      ${equipped
-                        ? "border-emerald-500/50 bg-emerald-950/30"
-                        : "border-gray-700/60 bg-gray-800/40"}
-                    `}
-                  >
-                    {/* Mini card preview */}
-                    <div className="flex gap-1">
-                      <div className={`w-6 h-8 rounded border text-[8px] font-bold flex flex-col justify-between p-0.5 leading-none select-none ${cardSkinFaceClass(skin.key) || "bg-white border-gray-200 text-gray-900"}`}>
-                        <span>A</span><span>♠</span>
-                      </div>
-                      <div className={`w-6 h-8 rounded border flex items-center justify-center select-none ${cardSkinBackClass(skin.key) || "bg-blue-900 border-blue-700"}`}>
-                        <div className="w-full h-full rounded m-px" style={!cardSkinBackClass(skin.key) ? { backgroundImage: "repeating-linear-gradient(45deg,#1e3a5f 0,#1e3a5f 2px,#1a3355 2px,#1a3355 4px)" } : undefined} />
+          <section className="max-w-md">
+            {/* Profile and Security share one form and one save button, so a
+                password change and a rename go up in a single request. */}
+            {(section === "profile" || section === "security") && (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                {section === "profile" && (
+                  <>
+                    <div>
+                      <p className="casino-eyebrow mb-3">Profile</p>
+                      <div className="flex items-center gap-3">
+                        <div
+                          className="w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shrink-0 border-2 border-[var(--brass)]/45"
+                          style={{ backgroundColor: avatarColor }}
+                        >
+                          {previewLetter}
+                        </div>
+                        <div>
+                          {displayName.trim() ? (
+                            <DisplayName
+                              displayName={displayName.trim()}
+                              nameEffect={user.equippedNameEffect}
+                              className="font-display text-[15px] text-[#eddfbe]"
+                            />
+                          ) : (
+                            <span className="text-[#6b6144] text-sm">Display name</span>
+                          )}
+                          <p className="text-[11px] text-[#7d6f4d]">@{user.username}</p>
+                        </div>
                       </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-white">{skin.label}</p>
-                    <p className="text-xs text-gray-500 leading-tight">{skin.description}</p>
+                    <div>
+                      <label htmlFor="display-name" className={LABEL}>
+                        Display name
+                      </label>
+                      <input
+                        id="display-name"
+                        value={displayName}
+                        onChange={(e) => {
+                          setDisplayName(e.target.value);
+                          setSuccess(false);
+                        }}
+                        placeholder="How others see you in game"
+                        maxLength={50}
+                        className={FIELD}
+                      />
+                    </div>
 
-                    {equipped ? (
-                      <span className="text-xs font-semibold text-emerald-400">✓ Equipped</span>
-                    ) : owned ? (
-                      <button
-                        onClick={() => handleEquipSkin(setCardSkins, skin.key, "/api/vanity/card-skins/equip", updateEquippedCardSkin)}
-                        disabled={!!cardSkins.actionLoading}
-                        className="text-xs font-semibold text-gray-300 hover:text-white transition-colors disabled:opacity-50 text-left"
-                      >
-                        {isActing ? "Equipping…" : "Equip"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handlePurchaseSkin(setCardSkins, skin, "/api/vanity/card-skins/purchase")}
-                        disabled={!!cardSkins.actionLoading || (user?.chips ?? 0) < skin.cost}
-                        className="text-xs font-semibold text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50 text-left"
-                      >
-                        {isActing ? "Buying…" : `${skin.cost.toLocaleString()} chips`}
-                      </button>
-                    )}
+                    <div>
+                      <span className={LABEL}>Avatar colour</span>
+                      <div className="flex gap-2 flex-wrap">
+                        {AVATAR_COLORS.map((color) => (
+                          <button
+                            key={color}
+                            type="button"
+                            onClick={() => {
+                              setAvatarColor(color);
+                              setSuccess(false);
+                            }}
+                            aria-label={`Avatar colour ${color}`}
+                            className={`w-8 h-8 rounded-full transition-all duration-150 ${
+                              avatarColor === color
+                                ? "ring-2 ring-[var(--brass)] ring-offset-2 ring-offset-[#0c2b1c] scale-110"
+                                : "hover:scale-105"
+                            }`}
+                            style={{ backgroundColor: color }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {section === "security" && (
+                  <>
+                    <div>
+                      <p className="casino-eyebrow mb-1">Change password</p>
+                      <p className="text-[11px] text-[#7d6f4d]">
+                        Leave blank to keep your current password.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label htmlFor="current-password" className={LABEL}>
+                        Current password
+                      </label>
+                      <input
+                        id="current-password"
+                        type="password"
+                        value={currentPassword}
+                        onChange={(e) => {
+                          setCurrentPassword(e.target.value);
+                          setSuccess(false);
+                          setError("");
+                        }}
+                        placeholder="••••••••"
+                        autoComplete="current-password"
+                        className={FIELD}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="new-password" className={LABEL}>
+                        New password
+                      </label>
+                      <input
+                        id="new-password"
+                        type="password"
+                        value={newPassword}
+                        onChange={(e) => {
+                          setNewPassword(e.target.value);
+                          setSuccess(false);
+                          setError("");
+                        }}
+                        placeholder="At least 12 characters"
+                        autoComplete="new-password"
+                        className={FIELD}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="confirm-password" className={LABEL}>
+                        Confirm new password
+                      </label>
+                      <input
+                        id="confirm-password"
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          setSuccess(false);
+                          setError("");
+                        }}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                        className={FIELD}
+                      />
+                    </div>
+                  </>
+                )}
+
+                {error && <p className="text-sm text-red-300">{error}</p>}
+                {success && <p className="text-sm text-emerald-300">Saved.</p>}
+
+                <button
+                  type="submit"
+                  disabled={loading || !displayName.trim()}
+                  className="btn-brass rounded-md py-2.5 text-[12px] font-extrabold uppercase tracking-[0.09em] transition-all disabled:opacity-40"
+                >
+                  {loading ? "Saving…" : "Save changes"}
+                </button>
+              </form>
+            )}
+
+            {section === "sound" && (
+              <div className="flex flex-col gap-5">
+                <div>
+                  <p className="casino-eyebrow mb-1">Sound</p>
+                  <p className="text-[11px] text-[#7d6f4d]">
+                    Saved on this device and applied immediately.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm text-[#d5c398]">Mute all sound</span>
+                  <Toggle
+                    label="Mute all sound"
+                    checked={soundMuted}
+                    onChange={setSoundMuted}
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className={`text-sm ${soundMuted ? "text-[#6b6144]" : "text-[#d5c398]"}`}>
+                      Volume
+                    </span>
+                    <span className="text-[11px] tabular-nums text-[var(--parchment-dim)]">
+                      {Math.round(soundVolume * 100)}%
+                    </span>
                   </div>
-                );
-              })}
-            </div>
-          )}
+                  <input
+                    type="range"
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={soundVolume}
+                    disabled={soundMuted}
+                    onChange={(e) => setSoundVolume(Number(e.target.value))}
+                    onMouseUp={previewSound}
+                    onTouchEnd={previewSound}
+                    className="w-full accent-[var(--brass)] disabled:opacity-40 cursor-pointer"
+                  />
+                </div>
 
-          {cardSkins.equipped && (
-            <button
-              onClick={() => handleEquipSkin(setCardSkins, null, "/api/vanity/card-skins/equip", updateEquippedCardSkin)}
-              disabled={!!cardSkins.actionLoading}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors self-center disabled:opacity-50"
-            >
-              {cardSkins.actionLoading ? "Removing…" : "Remove skin"}
-            </button>
-          )}
-        </div>
+                <div className="flex items-start justify-between gap-4">
+                  <span>
+                    <span className={`text-sm ${soundMuted ? "text-[#6b6144]" : "text-[#d5c398]"}`}>
+                      Table sounds
+                    </span>
+                    <span className="block text-[11px] text-[#7d6f4d] mt-0.5">
+                      Hear other players hit, stand, double and hit blackjack. Turn off to
+                      only hear your own seat.
+                    </span>
+                  </span>
+                  <span className="mt-0.5">
+                    <Toggle
+                      label="Table sounds"
+                      checked={tableSounds}
+                      disabled={soundMuted}
+                      onChange={setTableSounds}
+                    />
+                  </span>
+                </div>
 
-        {/* ── Table Backgrounds shop ── */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col gap-4">
-          <div>
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Table Backgrounds</h2>
-            <p className="text-xs text-gray-600 mt-1">
-              Customize your felt. Only you can see your table background.
-            </p>
-          </div>
-
-          {/* Preview */}
-          <div
-            className={`h-14 rounded-xl border border-white/10 transition-all ${tableBgClass(tableBgs.equipped)}`}
-          >
-            <div className="flex items-center justify-end h-full px-3">
-              <span className="text-xs text-white/40 font-medium">
-                {TABLE_BGS.find((b) => b.key === (tableBgs.equipped ?? "default"))?.label ?? "Default"}
-              </span>
-            </div>
-          </div>
-
-          {tableBgs.error && <p className="text-sm text-red-400">{tableBgs.error}</p>}
-
-          {tableBgs.loading ? (
-            <p className="text-sm text-gray-500 text-center py-4">Loading…</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-2">
-              {TABLE_BGS.map((bg) => {
-                const owned    = ownsSkin(tableBgs, bg.key);
-                const equipped = tableBgs.equipped === bg.key
-                               || (bg.key === "default" && !tableBgs.equipped);
-                const isActing = tableBgs.actionLoading === bg.key;
-
-                return (
-                  <div
-                    key={bg.key}
-                    className={`
-                      flex flex-col gap-2 p-3 rounded-xl border transition-colors
-                      ${equipped
-                        ? "border-emerald-500/50 bg-emerald-950/30"
-                        : "border-gray-700/60 bg-gray-800/40"}
-                    `}
-                  >
-                    {/* Swatch */}
-                    <div className={`h-8 rounded-lg border border-white/10 ${tableBgClass(bg.key)}`} />
-
-                    <p className="text-xs font-semibold text-white">{bg.label}</p>
-                    <p className="text-xs text-gray-500 leading-tight">{bg.description}</p>
-
-                    {equipped ? (
-                      <span className="text-xs font-semibold text-emerald-400">✓ Equipped</span>
-                    ) : owned ? (
+                <div>
+                  <span className={`text-sm ${soundMuted ? "text-[#6b6144]" : "text-[#d5c398]"}`}>
+                    Chip sound
+                  </span>
+                  <span className="block text-[11px] text-[#7d6f4d] mt-0.5 mb-2">
+                    Plays every time you add to a bet. Click one to hear it.
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {CHIP_SOUND_OPTIONS.map((opt) => (
                       <button
-                        onClick={() => handleEquipSkin(setTableBgs, bg.key, "/api/vanity/table-bgs/equip", updateEquippedTableBg)}
-                        disabled={!!tableBgs.actionLoading}
-                        className="text-xs font-semibold text-gray-300 hover:text-white transition-colors disabled:opacity-50 text-left"
+                        key={opt.value}
+                        type="button"
+                        disabled={soundMuted}
+                        onClick={() => setChipSound(opt.value)}
+                        title={opt.hint}
+                        className={`px-3 py-1.5 rounded text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+                          chipSound === opt.value
+                            ? "bg-[var(--brass)] text-[#20160a]"
+                            : "bg-white/[0.06] text-[#c2ad80] hover:bg-white/10"
+                        }`}
                       >
-                        {isActing ? "Equipping…" : "Equip"}
+                        {opt.label}
                       </button>
-                    ) : (
-                      <button
-                        onClick={() => handlePurchaseSkin(setTableBgs, bg, "/api/vanity/table-bgs/purchase")}
-                        disabled={!!tableBgs.actionLoading || (user?.chips ?? 0) < bg.cost}
-                        className="text-xs font-semibold text-yellow-400 hover:text-yellow-300 transition-colors disabled:opacity-50 text-left"
-                      >
-                        {isActing ? "Buying…" : `${bg.cost.toLocaleString()} chips`}
-                      </button>
-                    )}
+                    ))}
                   </div>
-                );
-              })}
-            </div>
-          )}
-
-          {tableBgs.equipped && (
-            <button
-              onClick={() => handleEquipSkin(setTableBgs, null, "/api/vanity/table-bgs/equip", updateEquippedTableBg)}
-              disabled={!!tableBgs.actionLoading}
-              className="text-xs text-gray-600 hover:text-gray-400 transition-colors self-center disabled:opacity-50"
-            >
-              {tableBgs.actionLoading ? "Removing…" : "Remove background"}
-            </button>
-          )}
+                </div>
+              </div>
+            )}
+          </section>
         </div>
-
       </div>
-    </div>
+    </ShellLayout>
   );
 }

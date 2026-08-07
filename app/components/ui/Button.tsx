@@ -5,21 +5,20 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: "sm" | "md" | "lg";
 }
 
+/* Maps onto the shared casino tokens in app.css so every button in the app
+   (lobby, login, register, modals) shares one palette. */
 const variantClasses: Record<NonNullable<ButtonProps["variant"]>, string> = {
-  primary:
-    "bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white border border-emerald-500 shadow-lg shadow-emerald-900/30",
-  secondary:
-    "bg-gray-700 hover:bg-gray-600 active:bg-gray-800 text-gray-100 border border-gray-600",
+  primary: "btn-brass",
+  secondary: "btn-brass-ghost",
   ghost:
-    "bg-transparent hover:bg-gray-800 active:bg-gray-700 text-gray-300 border border-gray-700",
-  danger:
-    "bg-red-700 hover:bg-red-600 active:bg-red-800 text-white border border-red-600",
+    "bg-transparent border border-transparent text-[var(--parchment-dim)] hover:text-[var(--parchment)] hover:bg-white/[0.05]",
+  danger: "btn-danger",
 };
 
 const sizeClasses: Record<NonNullable<ButtonProps["size"]>, string> = {
-  sm: "px-3 py-1.5 text-sm",
-  md: "px-4 py-2 text-sm",
-  lg: "px-6 py-3 text-base",
+  sm: "px-3 py-1.5 text-[12px]",
+  md: "px-4 py-2 text-[13px]",
+  lg: "px-6 py-3 text-[13.5px] uppercase tracking-[0.09em]",
 };
 
 export function Button({
@@ -33,9 +32,9 @@ export function Button({
   return (
     <button
       className={`
-        inline-flex items-center justify-center gap-2 rounded-lg font-medium
+        inline-flex items-center justify-center gap-2 rounded-md font-bold
         transition-all duration-150 cursor-pointer select-none
-        disabled:opacity-40 disabled:cursor-not-allowed
+        disabled:cursor-not-allowed
         ${variantClasses[variant]}
         ${sizeClasses[size]}
         ${className}

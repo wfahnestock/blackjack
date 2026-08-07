@@ -92,16 +92,16 @@ export function ChatPanel({
 
   return (
     <div
-      className={`flex flex-col bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden ${className}`}
+      className={`flex flex-col overflow-hidden rounded-lg border border-[var(--brass)]/18 bg-black/45 backdrop-blur-sm ${className}`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-800 shrink-0">
-        <span className="text-sm font-semibold text-gray-300">Chat</span>
+      <div className="flex shrink-0 items-center justify-between border-b border-[var(--brass)]/15 px-4 py-2.5">
+        <span className="casino-eyebrow">Chat</span>
         <div className="flex items-center gap-2">
           {canClearChat && onClearChat && (
             <button
               onClick={onClearChat}
-              className="text-gray-600 hover:text-red-400 transition-colors p-0.5 rounded"
+              className="rounded p-0.5 text-[#6b6144] transition-colors hover:text-red-300"
               aria-label="Clear chat"
               title="Clear all messages"
             >
@@ -113,7 +113,7 @@ export function ChatPanel({
           {onClose && (
             <button
               onClick={onClose}
-              className="text-gray-600 hover:text-gray-300 transition-colors p-0.5 rounded"
+              className="rounded p-0.5 text-[#6b6144] transition-colors hover:text-[var(--parchment)]"
               aria-label="Close chat"
             >
               <svg viewBox="0 0 16 16" className="w-4 h-4 fill-current">
@@ -125,17 +125,17 @@ export function ChatPanel({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3 min-h-0">
+      <div className="no-scrollbar flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3">
         {messages.length === 0 && (
-          <p className="text-xs text-gray-600 text-center mt-4 select-none">
-            No messages yet. Say hello!
+          <p className="mt-4 select-none text-center text-[11.5px] text-[#6b6144]">
+            No messages yet. Say hello.
           </p>
         )}
         {messages.map((msg) => {
           if (msg.isSystem) {
             return (
               <div key={msg.messageId} className="flex items-center justify-center py-1">
-                <span className="text-xs text-gray-500 italic select-none">
+                <span className="select-none text-[11px] italic text-[var(--parchment-dim)]">
                   {msg.message}
                 </span>
               </div>
@@ -153,32 +153,36 @@ export function ChatPanel({
                   style={{ backgroundColor: msg.avatarColor }}
                 />
                 {isSelf ? (
-                  <span className="text-xs font-medium text-gray-400 truncate max-w-[100px]">You</span>
+                  <span className="max-w-[100px] truncate text-[11px] font-medium text-[var(--parchment-dim)]">
+                    You
+                  </span>
                 ) : (
                   <DisplayName
                     displayName={msg.displayName}
                     nameEffect={msg.nameEffect}
                     roles={msg.roles}
-                    className="text-xs font-medium truncate max-w-[100px]"
+                    className="max-w-[100px] truncate text-[11px] font-medium text-[#c7b78c]"
                   />
                 )}
                 {/* Role icons — one per role, icon only with hover tooltip */}
                 {msg.roles?.map((role) => (
                   <ChatRoleIcon key={role.id} role={role} />
                 ))}
-                <span className="text-xs text-gray-600">{formatTime(msg.timestamp)}</span>
+                <span className="text-[10.5px] tabular-nums text-[#6b6144]">
+                  {formatTime(msg.timestamp)}
+                </span>
               </div>
 
               {/* Bubble row: bubble + optional remove button */}
               <div className={`flex items-center gap-1.5 max-w-[90%] ${isSelf ? "flex-row-reverse" : "flex-row"}`}>
                 <div
                   className={`
-                    px-3 py-1.5 rounded-xl text-sm leading-snug break-words min-w-0
+                    min-w-0 break-words rounded-lg px-3 py-1.5 text-[13px] leading-snug border
                     ${isSelf
-                      ? "bg-emerald-800/60 text-emerald-50 rounded-tr-sm"
-                      : "bg-gray-800 text-gray-200 rounded-tl-sm"
+                      ? "rounded-tr-sm border-[var(--brass)]/30 bg-[var(--brass)]/15 text-[#f0e4c6]"
+                      : "rounded-tl-sm border-white/[0.07] bg-white/[0.05] text-[#ded0ac]"
                     }
-                    ${msg.censored ? "italic text-gray-500" : ""}
+                    ${msg.censored ? "italic text-[#6b6144]" : ""}
                   `}
                 >
                   {msg.censored ? "message removed" : msg.message}
@@ -186,7 +190,7 @@ export function ChatPanel({
                 {canDeleteMessage && !msg.censored && onRemoveMessage && (
                   <button
                     onClick={() => onRemoveMessage(msg.messageId)}
-                    className="opacity-0 group-hover:opacity-100 shrink-0 text-gray-600 hover:text-red-400 transition-all p-0.5 rounded"
+                    className="shrink-0 rounded p-0.5 text-[#6b6144] opacity-0 transition-all hover:text-red-300 group-hover:opacity-100"
                     aria-label="Remove message"
                     title="Remove message"
                   >
@@ -203,9 +207,9 @@ export function ChatPanel({
       </div>
 
       {/* Input area */}
-      <div className="border-t border-gray-800 px-3 py-2.5 shrink-0 flex flex-col gap-1.5">
+      <div className="flex shrink-0 flex-col gap-1.5 border-t border-[var(--brass)]/15 px-3 py-2.5">
         {rateLimitError && (
-          <p className="text-xs text-red-400 leading-tight">{rateLimitError}</p>
+          <p className="text-[11px] leading-tight text-red-300">{rateLimitError}</p>
         )}
         <form onSubmit={handleSubmit} className="flex gap-2 items-center">
           <input
@@ -214,27 +218,22 @@ export function ChatPanel({
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Say something..."
+            placeholder="Say something…"
             maxLength={MAX_CHAT_MESSAGE_LENGTH + 10} // let them type slightly over so they see the counter
-            className={`
-              flex-1 min-w-0 bg-gray-800 rounded-lg px-3 py-2 text-sm text-gray-100
-              placeholder:text-gray-600 border transition-colors
-              focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500
-              ${overLimit ? "border-red-500" : "border-gray-700"}
-            `}
+            className={`casino-input min-w-0 flex-1 px-3 py-2 text-[13px] ${
+              overLimit ? "!border-red-400/60" : ""
+            }`}
           />
           <button
             type="submit"
             disabled={!draft.trim() || overLimit}
-            className="shrink-0 px-3 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800
-              text-white text-sm font-medium transition-colors
-              disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-brass shrink-0 rounded-md px-3.5 py-2 text-[12px] font-bold uppercase tracking-[0.08em] transition-all disabled:cursor-not-allowed"
           >
             Send
           </button>
         </form>
         {draft.length > MAX_CHAT_MESSAGE_LENGTH - 20 && (
-          <p className={`text-xs text-right ${overLimit ? "text-red-400" : "text-gray-600"}`}>
+          <p className={`text-right text-[11px] ${overLimit ? "text-red-300" : "text-[#6b6144]"}`}>
             {charsRemaining} chars remaining
           </p>
         )}

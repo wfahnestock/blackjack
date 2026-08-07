@@ -13,6 +13,7 @@ import { useKickNotice } from "~/lib/useKickNotice";
 import { useChat } from "~/lib/useChat";
 import { useAuth } from "~/lib/AuthContext";
 import { clearGameState } from "~/lib/socket";
+import { casinoFeltClass } from "~/lib/tableBgs";
 import type { GameSettings } from "~/lib/types";
 
 export function meta() {
@@ -62,8 +63,12 @@ export default function Lobby() {
 
   if (!state) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-gray-500">Connecting...</p>
+      <div
+        className={`casino-felt ${casinoFeltClass(
+          user?.equippedTableBg
+        )} min-h-screen flex items-center justify-center`}
+      >
+        <p className="casino-eyebrow">Connecting…</p>
       </div>
     );
   }
@@ -112,18 +117,24 @@ export default function Lobby() {
         </div>
       )}
 
-      <div className="min-h-screen flex items-center justify-center px-4 py-8">
+      {/* The lobby wears the player's equipped felt but deliberately skips the
+          nav rail: the rail's links would let someone wander off to the Locker
+          while still seated in the room. Leaving happens through one button
+          that actually emits room:leave. */}
+      <div
+        className={`casino-felt ${casinoFeltClass(
+          user?.equippedTableBg
+        )} min-h-screen flex items-center justify-center px-4 py-8`}
+      >
         {/* Responsive layout: single-column on mobile, two-column on lg+ */}
         <div className="w-full max-w-5xl flex gap-6 items-start">
           {/* Main lobby content */}
-          <div className="flex-1 min-w-0 max-w-lg mx-auto lg:mx-0 flex flex-col gap-6">
-            {/* Room code */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+          <div className="flex-1 min-w-0 max-w-lg mx-auto lg:mx-0 flex flex-col gap-4">
+            <div className="casino-panel p-6">
               <RoomCodeDisplay code={state.roomCode} />
             </div>
 
-            {/* Players */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div className="casino-panel p-5">
               <PlayerList
                 players={state.players}
                 selfPlayerId={playerId}
@@ -131,8 +142,7 @@ export default function Lobby() {
               />
             </div>
 
-            {/* Settings */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+            <div className="casino-panel p-5">
               <GameSettingsPanel
                 settings={state.settings}
                 onChange={handleUpdateSettings}
@@ -153,19 +163,18 @@ export default function Lobby() {
               </Button>
             )}
             {!isHost && (
-              <p className="text-center text-sm text-gray-600">
-                Waiting for the host to start the game...
+              <p className="text-center text-[12px] text-[var(--parchment-dim)]">
+                Waiting for the host to start the game…
               </p>
             )}
 
-            {/* Leave button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLeave}
-              className="w-full text-gray-500 hover:text-red-400"
+              className="w-full uppercase tracking-[0.1em] hover:!text-red-300"
             >
-              Leave Room
+              Leave Table
             </Button>
           </div>
 
@@ -190,13 +199,13 @@ export default function Lobby() {
         onClick={handleMobileChatOpen}
         className="
           fixed bottom-6 right-6 z-40 lg:hidden
-          w-14 h-14 rounded-full bg-emerald-700 hover:bg-emerald-600 active:bg-emerald-800
-          shadow-lg shadow-emerald-900/40 transition-colors
+          w-14 h-14 rounded-full btn-brass
+          shadow-lg shadow-black/50 transition-all
           flex items-center justify-center relative
         "
         aria-label="Open chat"
       >
-        <svg viewBox="0 0 37 32" className="w-8 h-8 text-white">
+        <svg viewBox="0 0 37 32" className="w-8 h-8 text-[#20160a]">
           <g>
             <path fill="currentColor" d="M6.371,20.055l-1.924,4.103c-0.089,0.189-0.05,0.416,0.098,0.564c0.096,0.097,0.224,0.147,0.354,0.147c0.071,0,0.143-0.015,0.21-0.046l6.774-3.139c0.777,0.095,1.489,0.141,2.17,0.141c7.779,0,14.107-4.896,14.107-10.913C28.161,4.896,21.833,0,14.054,0S-0.053,4.896-0.053,10.912C-0.053,14.645,2.338,18.032,6.371,20.055z M14.054,1c7.227,0,13.107,4.446,13.107,9.912s-5.88,9.913-13.107,9.913c-0.681,0-1.396-0.049-2.187-0.15c-0.092-0.011-0.188,0.004-0.273,0.042l-5.658,2.621l1.551-3.307c0.057-0.12,0.062-0.258,0.017-0.383s-0.139-0.228-0.26-0.283c-3.943-1.823-6.297-4.983-6.297-8.453C0.947,5.446,6.827,1,14.054,1z"/>
             <path fill="currentColor" d="M7.197,13.328c0.162,0.039,0.327,0.059,0.491,0.059c0.617,0,1.19-0.278,1.572-0.763c0.382-0.485,0.517-1.115,0.369-1.728c-0.171-0.71-0.74-1.279-1.451-1.451c-0.775-0.188-1.58,0.091-2.062,0.705c-0.382,0.485-0.517,1.115-0.369,1.727C5.917,12.587,6.486,13.156,7.197,13.328z M6.901,10.77c0.191-0.243,0.478-0.383,0.787-0.383c0.084,0,0.17,0.011,0.255,0.031c0.344,0.083,0.63,0.369,0.713,0.713c0.076,0.317,0.011,0.628-0.183,0.874c-0.244,0.31-0.645,0.445-1.042,0.351c-0.344-0.083-0.63-0.369-0.713-0.713C6.642,11.326,6.707,11.016,6.901,10.77z"/>

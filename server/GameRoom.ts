@@ -83,6 +83,11 @@ export class GameRoom {
     return this.machine.state.players.every((p) => p.status === "disconnected");
   }
 
+  /**
+   * Raw, server-authoritative state — includes the dealer's hole card. For
+   * server-side use only (round persistence, achievements). Anything sent to a
+   * client must use `machine.publicState()` instead.
+   */
   get state() {
     return this.machine.state;
   }
@@ -127,7 +132,7 @@ export class GameRoom {
       socket.join(this.code);
       this.machine.updatePlayer(playerId, { status: "connected", displayName });
       // Send full state to the reconnecting socket so their client has current game state
-      socket.emit("state:sync", this.machine.state);
+      socket.emit("state:sync", this.machine.publicState());
       this.broadcast("state:player-updated", this.machine.getPlayer(playerId)!);
       this.onListingChanged?.();
       return { success: true };
@@ -155,7 +160,7 @@ export class GameRoom {
     this.playerRolesCache.set(playerId, roles);
     socket.join(this.code);
 
-    this.broadcast("state:sync", this.machine.state);
+    this.broadcast("state:sync", this.machine.publicState());
     this.onListingChanged?.();
     return { success: true };
   }
@@ -200,7 +205,7 @@ export class GameRoom {
       }
     }
 
-    this.broadcast("state:sync", this.machine.state);
+    this.broadcast("state:sync", this.machine.publicState());
     this.onListingChanged?.();
   }
 
@@ -225,7 +230,7 @@ export class GameRoom {
     if (this.machine.state.phase !== "lobby") return;
 
     Object.assign(this.machine.state.settings, settings);
-    this.broadcast("state:sync", this.machine.state);
+    this.broadcast("state:sync", this.machine.publicState());
     this.onListingChanged?.();
   }
 

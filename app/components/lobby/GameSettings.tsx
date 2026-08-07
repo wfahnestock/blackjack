@@ -1,4 +1,5 @@
 import { Input } from "~/components/ui/Input";
+import { Toggle } from "~/components/ui/Toggle";
 import type { GameSettings } from "~/lib/types";
 
 interface GameSettingsProps {
@@ -7,22 +8,57 @@ interface GameSettingsProps {
   isHost: boolean;
 }
 
+/** The four boolean house rules, so the host view isn't four near-identical blocks. */
+const RULES: {
+  key: "allowCountingHint" | "bankruptcyProtection" | "fiveCardCharlie" | "isPrivate";
+  label: string;
+  hint: string;
+}[] = [
+  {
+    key: "allowCountingHint",
+    label: "Hi-Lo Count Hint",
+    hint: "Shows the running card count to everyone at the table",
+  },
+  {
+    key: "bankruptcyProtection",
+    label: "Bankruptcy Protection",
+    hint: "Grants 100 chips to players who reach zero so they can keep playing",
+  },
+  {
+    key: "fiveCardCharlie",
+    label: "5-Card Charlie",
+    hint: "Five cards without busting wins automatically, except against a dealer natural",
+  },
+  {
+    key: "isPrivate",
+    label: "Private Table",
+    hint: "Hides this table from the public browser",
+  },
+];
+
 export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsProps) {
   if (!isHost) {
+    const rows: [string, string][] = [
+      ["Min bet", String(settings.minBet)],
+      ["Max bet", String(settings.maxBet)],
+      ["Betting timer", `${settings.bettingTimerSeconds}s`],
+      ["Turn timer", `${settings.turnTimerSeconds}s`],
+      ["Count hint", settings.allowCountingHint ? "On" : "Off"],
+      ["Bankruptcy protection", settings.bankruptcyProtection ? "On" : "Off"],
+      ["5-Card Charlie", settings.fiveCardCharlie ? "On" : "Off"],
+      ["Visibility", settings.isPrivate ? "Private" : "Public"],
+    ];
+
     return (
-      <div className="flex flex-col gap-2 text-sm text-gray-500">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
-          Table Settings
-        </span>
-        <div className="grid grid-cols-2 gap-x-6 gap-y-1">
-          <span>Min bet</span><span className="text-gray-300">{settings.minBet}</span>
-          <span>Max bet</span><span className="text-gray-300">{settings.maxBet}</span>
-          <span>Betting timer</span><span className="text-gray-300">{settings.bettingTimerSeconds}s</span>
-          <span>Turn timer</span><span className="text-gray-300">{settings.turnTimerSeconds}s</span>
-          <span>Count hint</span><span className="text-gray-300">{settings.allowCountingHint ? "On" : "Off"}</span>
-          <span>Bankruptcy protection</span><span className="text-gray-300">{settings.bankruptcyProtection ? "On" : "Off"}</span>
-          <span>5-Card Charlie</span><span className="text-gray-300">{settings.fiveCardCharlie ? "On" : "Off"}</span>
-          <span>Visibility</span><span className="text-gray-300">{settings.isPrivate ? "Private" : "Public"}</span>
+      <div className="flex flex-col gap-2.5">
+        <span className="casino-eyebrow">Table Settings</span>
+        <div className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-1.5 text-[12.5px]">
+          {rows.map(([label, value]) => (
+            <div key={label} className="contents">
+              <span className="text-[#8a7f5f]">{label}</span>
+              <span className="text-right tabular-nums text-[#e6d9b6]">{value}</span>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -30,9 +66,7 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
 
   return (
     <div className="flex flex-col gap-4">
-      <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
-        Table Settings
-      </span>
+      <span className="casino-eyebrow">Table Settings</span>
 
       <div className="grid grid-cols-2 gap-3">
         <Input
@@ -71,57 +105,30 @@ export function GameSettingsPanel({ settings, onChange, isHost }: GameSettingsPr
         />
       </div>
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={settings.allowCountingHint}
-          onChange={(e) => onChange({ allowCountingHint: e.target.checked })}
-          className="w-4 h-4 accent-emerald-500"
-        />
-        <div>
-          <p className="text-sm text-gray-300 font-medium">Show Hi-Lo Count Hint</p>
-          <p className="text-xs text-gray-600">Displays the running card count to all players</p>
-        </div>
-      </label>
+      <hr className="brass-rule" />
 
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={settings.bankruptcyProtection}
-          onChange={(e) => onChange({ bankruptcyProtection: e.target.checked })}
-          className="w-4 h-4 accent-emerald-500"
-        />
-        <div>
-          <p className="text-sm text-gray-300 font-medium">Bankruptcy Protection</p>
-          <p className="text-xs text-gray-600">Grants 100 chips to players who reach 0 so they can keep playing</p>
-        </div>
-      </label>
-
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={settings.fiveCardCharlie}
-          onChange={(e) => onChange({ fiveCardCharlie: e.target.checked })}
-          className="w-4 h-4 accent-emerald-500"
-        />
-        <div>
-          <p className="text-sm text-gray-300 font-medium">5-Card Charlie</p>
-          <p className="text-xs text-gray-600">Drawing 5 cards without busting is an automatic win (loses to dealer natural blackjack)</p>
-        </div>
-      </label>
-
-      <label className="flex items-center gap-3 cursor-pointer">
-        <input
-          type="checkbox"
-          checked={settings.isPrivate}
-          onChange={(e) => onChange({ isPrivate: e.target.checked })}
-          className="w-4 h-4 accent-emerald-500"
-        />
-        <div>
-          <p className="text-sm text-gray-300 font-medium">Private Room</p>
-          <p className="text-xs text-gray-600">Hide this room from the public room browser</p>
-        </div>
-      </label>
+      <div className="flex flex-col gap-3.5">
+        {RULES.map((rule) => (
+          <div key={rule.key} className="flex items-start justify-between gap-4">
+            <span className="min-w-0">
+              <span className="block text-[13px] font-medium text-[#e6d9b6]">{rule.label}</span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-[#7d6f4d]">
+                {rule.hint}
+              </span>
+            </span>
+            <span className="mt-0.5">
+              <Toggle
+                label={rule.label}
+                checked={settings[rule.key]}
+                /* Cast: a computed key from a union widens to an index
+                   signature, which won't satisfy Partial<GameSettings>
+                   because that type also has number fields. */
+                onChange={(v) => onChange({ [rule.key]: v } as Partial<GameSettings>)}
+              />
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

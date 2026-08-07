@@ -12,51 +12,54 @@ export function PlayerList({ players, selfPlayerId, onPlayerClick }: PlayerListP
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-widest">
-          Players ({players.length})
-        </span>
+        <span className="casino-eyebrow">Players ({players.length})</span>
         {onPlayerClick && (
-          <span className="text-xs text-gray-700">· click to view profile</span>
+          <span className="text-[10.5px] text-[#6b6144]">· select to view profile</span>
         )}
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-1">
         {players.map((player) => (
           <div
             key={player.playerId}
-            className={`flex items-center gap-3 p-2.5 rounded-xl bg-gray-800/60 border border-gray-800 ${onPlayerClick ? "cursor-pointer hover:bg-gray-700/60 transition-colors" : ""}`}
+            className={`flex items-center gap-3 rounded-md border px-2.5 py-2 transition-colors ${
+              player.playerId === selfPlayerId
+                ? "border-[var(--brass)]/28 bg-[var(--brass)]/[0.08]"
+                : "border-[var(--brass)]/12 bg-black/25"
+            } ${onPlayerClick ? "cursor-pointer hover:bg-white/[0.05]" : ""}`}
             onClick={() => onPlayerClick?.(player.playerId)}
           >
             <div
-              className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold text-sm"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-[var(--brass)]/35 text-sm font-bold text-white"
               style={{ backgroundColor: player.avatarColor }}
             >
               {player.displayName.charAt(0).toUpperCase()}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <DisplayName
                   displayName={player.displayName}
                   nameEffect={player.nameEffect}
-                  className={`text-sm font-semibold truncate ${
-                    player.playerId === selfPlayerId && !player.nameEffect ? "text-emerald-400" : ""
-                  }`}
+                  className="truncate text-[13px] font-semibold text-[#e6d9b6]"
                 />
                 {player.playerId === selfPlayerId && (
-                  <span className="text-sm font-semibold text-emerald-400">(you)</span>
+                  <span className="shrink-0 rounded border border-[var(--brass)]/30 px-1.5 py-px text-[9px] uppercase tracking-[0.12em] text-[var(--parchment-dim)]">
+                    You
+                  </span>
                 )}
                 {player.isHost && (
-                  <span className="text-xs bg-amber-900/50 text-amber-400 border border-amber-800 px-1.5 py-0.5 rounded-full">
+                  <span className="shrink-0 rounded border border-[var(--brass)]/40 bg-[var(--brass)]/15 px-1.5 py-px text-[9px] uppercase tracking-[0.12em] text-[#e8cd7a]">
                     Host
                   </span>
                 )}
               </div>
-              <span className="text-xs text-yellow-600">
+              <span className="text-[11px] tabular-nums text-[#a8996d]">
                 {formatChips(player.chips)} chips
               </span>
             </div>
             <div
-              className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                player.status === "connected" ? "bg-emerald-500" : "bg-gray-600"
+              title={player.status === "connected" ? "Connected" : "Disconnected"}
+              className={`h-2 w-2 flex-shrink-0 rounded-full ${
+                player.status === "connected" ? "bg-emerald-400" : "bg-[#5d5540]"
               }`}
             />
           </div>
